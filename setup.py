@@ -1,6 +1,18 @@
+import sys
 from io import open
 
 from setuptools import find_packages, setup
+
+CURRENT_PYTHON = sys.version_info[:2]
+if CURRENT_PYTHON == (2, 7):
+    pysvg = 'pysvg>=0.2.2'
+elif CURRENT_PYTHON >= (3, 5):
+    pysvg = 'pysvg-py3>=0.2.2.post2'
+
+required = [
+    pysvg,
+    'cobra>=0.14.2'
+]
 
 with open('vizan/__init__.py', 'r') as f:
     for line in f:
@@ -12,11 +24,6 @@ with open('vizan/__init__.py', 'r') as f:
 
 with open('README.rst', 'r', encoding='utf-8') as f:
     readme = f.read()
-
-required = [
-    'pysvg-py3>=0.2.2.post2',
-    'cobra>=0.14.2'
-]
 
 setup(
     name='vizan',
