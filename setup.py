@@ -13,7 +13,10 @@ with open('vizan/__init__.py', 'r') as f:
 with open('README.rst', 'r', encoding='utf-8') as f:
     readme = f.read()
 
-REQUIRES = ['pysvg-py3>=0.2.2.post2', 'cobra>=0.14.2']
+required = [
+    'pysvg-py3>=0.2.2.post2',
+    'cobra>=0.14.2'
+]
 
 setup(
     name='vizan',
@@ -45,7 +48,7 @@ setup(
         'Topic :: Scientific/Engineering :: Bio-Informatics',
     ],
 
-    install_requires=REQUIRES,
+    install_requires=required,
     tests_require=['coverage', 'pytest'],
 
     packages=find_packages(),
