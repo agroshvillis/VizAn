@@ -140,7 +140,7 @@ def Call_Vizan(model,SolutionAnalysis,SolutionType,prod,subst,count):
     call_vizan_cli(model, file_source_path, SolutionAnalysis, SolutionType, output_filename)
 
 
-def call_vizan_cli(model, file_source_path, SolutionAnalysis, SolutionType, output_filename):
+def call_vizan_cli(model, file_source_path, SolutionAnalysis, SolutionType, output_filename, intermediate_filename='pysvg_developed_file.svg'):
     SVGObject = parse2(file_source_path)
     if type(SolutionAnalysis) == cobra.core.solution.Solution:
         flux_sum = calculate_common_substrate_flux(model)
@@ -161,10 +161,10 @@ def call_vizan_cli(model, file_source_path, SolutionAnalysis, SolutionType, outp
                         set_metabolite_id_from_sympheny(s1, ' ', d=0)  ## to put ID on metabolite class group elements
                         TravSVGFBA(s1, model, SolutionAnalysis, '', flux_sum,
                                    reac_id)  ## for calculating colors and etc
-    SVGObject.save('pysvg_developed_file.svg')
+    SVGObject.save(intermediate_filename)
     print('Network has been drawn')
-    insert_interactive_script(file_source_path)
-    insert_metab_id(file_source_path, output_filename)
+    insert_interactive_script(file_source_path, intermediate_filename)
+    insert_metab_id(file_source_path, output_filename, intermediate_filename)
     print('metab id has been drawn added')
 
 
@@ -403,9 +403,9 @@ def InsertScripCall(source_file_path, pattern, substring):
 
 
 
-def IsScripHtmlInsertNeeded() :
+def IsScripHtmlInsertNeeded(intermediate_filename) :
     isInsertNeeded = True
-    with open('pysvg_developed_file.svg', 'r') as f:
+    with open(intermediate_filename, 'r') as f:
         lines = f.readlines()
         f.seek(0)
         for line in lines:
@@ -419,13 +419,13 @@ def IsScripHtmlInsertNeeded() :
         return isInsertNeeded
 
 
-def AddPopupForElementReaction(lineToChange) :                  ####### savestring
+def AddPopupForElementReaction(lineToChange, intermediate_filename):                  ####### savestring
     lineNew = "onclick='ShowTooltip(this, evt)' \n " + lineToChange
-    InsertScripCall('pysvg_developed_file.svg', lineToChange, lineNew)
+    InsertScripCall(intermediate_filename, lineToChange, lineNew)
 
 
-def AddScriptAndPopup(placeToEnd, insert_lines) :
-    with open('pysvg_developed_file.svg', 'r+') as myfile:
+def AddScriptAndPopup(placeToEnd, insert_lines, intermediate_filename):
+    with open(intermediate_filename, 'r+') as myfile:
         lines = myfile.readlines()
         if placeToEnd :
             lines[-2:-2] = insert_lines
@@ -436,13 +436,13 @@ def AddScriptAndPopup(placeToEnd, insert_lines) :
     myfile.close()
     
     
-def insert_interactive_script(file_source_path):    
+def insert_interactive_script(file_source_path, intermediate_filename):
     from tempfile import mkstemp
     from shutil import move
     from os import remove
 
 
-    path =  'pysvg_developed_file.svg'
+    path = intermediate_filename
 
     
     cssToInsert = cssToInsert = """<defs>
@@ -651,20 +651,20 @@ def insert_interactive_script(file_source_path):
     
     
 
-    if IsScripHtmlInsertNeeded():        
-        AddScriptAndPopup(False, [cssToInsert, scriptToInsert, htmlOverlayToInsert])
-        AddScriptAndPopup(True, [htmlPopupToInsert])
-        AddPopupForElementReaction('class="node"')
-        AddPopupForElementReaction('class="reaction"')
+    if IsScripHtmlInsertNeeded(intermediate_filename):
+        AddScriptAndPopup(False, [cssToInsert, scriptToInsert, htmlOverlayToInsert], intermediate_filename)
+        AddScriptAndPopup(True, [htmlPopupToInsert], intermediate_filename)
+        AddPopupForElementReaction('class="node"', intermediate_filename)
+        AddPopupForElementReaction('class="reaction"', intermediate_filename)
 
-def insert_metab_id(file_source_path,output_filename):
+def insert_metab_id(file_source_path,output_filename, intermediate_filename):
     ET.register_namespace('svg', "http://www.w3.org/2000/svg")
 
     pathOriginalFile = file_source_path
     treeOriginalFile = ET.parse(pathOriginalFile)
     rootOriginalFile = treeOriginalFile.getroot()
 
-    pathPySVGFile ='pysvg_developed_file.svg'
+    pathPySVGFile = intermediate_filename
     treePySVGFile = ET.parse(pathPySVGFile)
     rootPySVGFile = treePySVGFile.getroot()
 
@@ -692,7 +692,7 @@ def insert_metab_id(file_source_path,output_filename):
                             nodePySVGFile.set('id_metabolite', str(metIdOriginalFile))
 
     treePySVGFile.write(output_filename)
-    os.remove('pysvg_developed_file.svg')
+    os.remove(intermediate_filename)
 
 
 def final_output_svg_file_name(prod, subst, count):
