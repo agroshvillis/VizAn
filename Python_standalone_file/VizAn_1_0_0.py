@@ -136,11 +136,11 @@ def Call_Vizan(model,SolutionAnalysis,SolutionType,prod,subst,count):
         root = tk.Tk()
         root.withdraw()
         file_source_path=tk.filedialog.askopenfilename()
+    output_filename = final_output_svg_file_name(prod, subst, count)
+    call_vizan_cli(model, file_source_path, SolutionAnalysis, SolutionType, output_filename)
 
-    call_vizan_cli(model, file_source_path, SolutionAnalysis, SolutionType, prod, subst, count)
 
-
-def call_vizan_cli(model, file_source_path, SolutionAnalysis, SolutionType, prod, subst, count):
+def call_vizan_cli(model, file_source_path, SolutionAnalysis, SolutionType, output_filename):
     SVGObject = parse2(file_source_path)
     if type(SolutionAnalysis) == cobra.core.solution.Solution:
         flux_sum = calculate_common_substrate_flux(model)
@@ -164,7 +164,7 @@ def call_vizan_cli(model, file_source_path, SolutionAnalysis, SolutionType, prod
     SVGObject.save('pysvg_developed_file.svg')
     print('Network has been drawn')
     insert_interactive_script(file_source_path)
-    insert_metab_id(file_source_path, prod, subst, count)
+    insert_metab_id(file_source_path, output_filename)
     print('metab id has been drawn added')
 
 
@@ -657,7 +657,7 @@ def insert_interactive_script(file_source_path):
         AddPopupForElementReaction('class="node"')
         AddPopupForElementReaction('class="reaction"')
 
-def insert_metab_id(file_source_path,prod,subst,count):
+def insert_metab_id(file_source_path,output_filename):
     ET.register_namespace('svg', "http://www.w3.org/2000/svg")
 
     pathOriginalFile = file_source_path
@@ -691,10 +691,12 @@ def insert_metab_id(file_source_path,prod,subst,count):
                         if (metIdPySVGFile is not None):
                             nodePySVGFile.set('id_metabolite', str(metIdOriginalFile))
 
-    treePySVGFile.write(str(prod) + "_" + str(subst) + "_" + str(count) + '.svg') 
+    treePySVGFile.write(output_filename)
     os.remove('pysvg_developed_file.svg')
 
 
+def final_output_svg_file_name(prod, subst, count):
+    return str(prod) + "_" + str(subst) + "_" + str(count) + '.svg'
 
 
 
