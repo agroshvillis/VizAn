@@ -18,8 +18,9 @@ def main(model_filename='iML1515.json', analysis=None, analysis_type='FBA'):
     VizAn.Call_Vizan(model, sol, analysis_type, prod, subst, count)
 
 
-def perform_visualisation(model_filename='iML1515.json', svg_filepath='E_coli_source.svg', analysis_type='FBA', analysis_results=None):
-    model = cio.load_json_model(model_filename)
+def perform_visualisation(model_file_path='iML1515.json', svg_file_path='E_coli_source.svg', analysis_type='FBA',
+                          analysis_results=None):
+    model = cio.load_json_model(model_file_path)
     if analysis_results is None:
         fba_results = model.optimize()
         if analysis_type == 'FBA':
@@ -33,7 +34,7 @@ def perform_visualisation(model_filename='iML1515.json', svg_filepath='E_coli_so
     prod = 'prod'
     subst = 'subst'
     count = '0'
-    VizAn.call_vizan_cli(model, svg_filepath, analysis_results, analysis_type, prod, subst, count)
+    VizAn.call_vizan_cli(model, svg_file_path, analysis_results, analysis_type, prod, subst, count)
 
 
 if __name__ == "__main__":
