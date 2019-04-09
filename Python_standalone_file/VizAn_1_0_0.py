@@ -29,18 +29,15 @@ from os import remove
 
 import xml.etree.ElementTree as ET
 
-from pysvg.animate import *
-from pysvg.filter import *
-from pysvg.gradient import *
-from pysvg.linking import *
-from pysvg.script import *
-from pysvg.shape import *
-from pysvg.structure import *
-from pysvg.style import *
-from pysvg.text import *
 from xml.dom import minidom
 from xml.dom import Node
 
+from pysvg.structure import Svg
+for subpackage in ['core', 'filter', 'gradient', 'linking', 'script', 'shape', 'structure', 'style', 'text']:
+    try:
+        exec('from pysvg.' + subpackage + ' import *')
+    except ImportError:
+        pass
     
     
 def init_coli_model_FBA(prod,subst,count):
@@ -87,11 +84,13 @@ def build2(node_, object):
     for child_ in node_.childNodes:
         nodeName_ = child_.nodeName.split(':')[-1]
         if child_.nodeType == Node.ELEMENT_NODE:
+            objectinstance = None
             try:
-                objectinstance=eval(nodeName_.title()) ()                
+                objectinstance = eval(nodeName_.title())()
             except:
                 continue
-            object.addElement(build2(child_,objectinstance))
+            if objectinstance is not None:
+                object.addElement(build2(child_,objectinstance))
         elif child_.nodeType == Node.TEXT_NODE:
             if child_.nodeValue != None:
                 object.appendTextContent(child_.nodeValue)
@@ -106,7 +105,7 @@ def build2(node_, object):
 def parse2(inFileName):
     doc = minidom.parse(inFileName)
     rootNode = doc.documentElement
-    rootObj = pysvg.structure.Svg()
+    rootObj = Svg()
     build2(rootNode,rootObj)
     doc = None
     return rootObj
@@ -215,14 +214,15 @@ def TravSVGFBA (svgobj,model,SolutionAnalysis,Reac,flux_sum,reac_id,d=0):
                                 l.setContent(Reac + ' ' + str(SolutionAnalysis.loc[Reac,'minimum']) + ' ' + str(SolutionAnalysis.loc[Reac,'maximum']))
                 if str(s.getAttribute('class')) == 'node':
                     Metab=s.getAttribute('id_metabolite')
-                    info_metab=model.metabolites.get_by_id(Metab)
-                    s.setAttribute(attribute_name='Charge',attribute_value=info_metab.charge)    
-                    s.setAttribute(attribute_name='Compartment',attribute_value=info_metab.compartment) 
-                    s.setAttribute(attribute_name='Elements',attribute_value=info_metab.elements) 
-                    s.setAttribute(attribute_name='Formula',attribute_value=info_metab.formula) 
-                    s.setAttribute(attribute_name='Name',attribute_value=info_metab.name) 
-                    s.setAttribute(attribute_name='Shadow_price',attribute_value=info_metab.shadow_price) 
-                    TravSVGFBA(s,model,SolutionAnalysis,Reac,flux_sum,reac_id,d+1)
+                    if Metab is not None:
+                        info_metab=model.metabolites.get_by_id(Metab)
+                        s.setAttribute(attribute_name='Charge',attribute_value=info_metab.charge)
+                        s.setAttribute(attribute_name='Compartment',attribute_value=info_metab.compartment)
+                        s.setAttribute(attribute_name='Elements',attribute_value=info_metab.elements)
+                        s.setAttribute(attribute_name='Formula',attribute_value=info_metab.formula)
+                        s.setAttribute(attribute_name='Name',attribute_value=info_metab.name)
+                        s.setAttribute(attribute_name='Shadow_price',attribute_value=info_metab.shadow_price)
+                        TravSVGFBA(s,model,SolutionAnalysis,Reac,flux_sum,reac_id,d+1)
                 if str(s.getAttribute('class')) == 'node-circle metabolite-circle':
                     print ("")
     
