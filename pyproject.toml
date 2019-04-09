@@ -1,0 +1,10 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+
+[metadata]
+name = "vizan"
+version = "0.1.0"
+description = "VizAn is a visualization tool for Flux balance analysis (FBA) and Flux variability analysis (FVA)."
+authors = ["Agris Pentjuss <agrosh@inbox.lv>", "Rudolfs Petrovs <rudolfs.petrovs@lu.lv>"]
+license = "GPL-3"
+url = "https://github.com/lv-csbg/VizAn"
