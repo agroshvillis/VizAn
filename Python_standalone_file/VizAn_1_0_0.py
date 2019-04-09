@@ -29,18 +29,15 @@ from os import remove
 
 import xml.etree.ElementTree as ET
 
-from pysvg.animate import *
-from pysvg.filter import *
-from pysvg.gradient import *
-from pysvg.linking import *
-from pysvg.script import *
-from pysvg.shape import *
-from pysvg.structure import *
-from pysvg.style import *
-from pysvg.text import *
 from xml.dom import minidom
 from xml.dom import Node
 
+from pysvg.structure import Svg
+for subpackage in ['core', 'filter', 'gradient', 'linking', 'script', 'shape', 'structure', 'style', 'text']:
+    try:
+        exec('from pysvg.' + subpackage + ' import *')
+    except ImportError:
+        pass
     
     
 def init_coli_model_FBA(prod,subst,count):
@@ -87,11 +84,13 @@ def build2(node_, object):
     for child_ in node_.childNodes:
         nodeName_ = child_.nodeName.split(':')[-1]
         if child_.nodeType == Node.ELEMENT_NODE:
+            objectinstance = None
             try:
-                objectinstance=eval(nodeName_.title()) ()                
+                objectinstance = eval(nodeName_.title())()
             except:
                 continue
-            object.addElement(build2(child_,objectinstance))
+            if objectinstance is not None:
+                object.addElement(build2(child_,objectinstance))
         elif child_.nodeType == Node.TEXT_NODE:
             if child_.nodeValue != None:
                 object.appendTextContent(child_.nodeValue)
@@ -106,7 +105,7 @@ def build2(node_, object):
 def parse2(inFileName):
     doc = minidom.parse(inFileName)
     rootNode = doc.documentElement
-    rootObj = pysvg.structure.Svg()
+    rootObj = Svg()
     build2(rootNode,rootObj)
     doc = None
     return rootObj
@@ -137,34 +136,38 @@ def Call_Vizan(model,SolutionAnalysis,SolutionType,prod,subst,count):
         root = tk.Tk()
         root.withdraw()
         file_source_path=tk.filedialog.askopenfilename()
-        
-        
-    SVGObject=parse2(file_source_path)
+    output_filename = final_output_svg_file_name(prod, subst, count)
+    call_vizan_cli(model, file_source_path, SolutionAnalysis, SolutionType, output_filename)
+
+
+def call_vizan_cli(model, file_source_path, SolutionAnalysis, SolutionType, output_filename, intermediate_filename='pysvg_developed_file.svg'):
+    SVGObject = parse2(file_source_path)
     if type(SolutionAnalysis) == cobra.core.solution.Solution:
-        flux_sum=calculate_common_substrate_flux(model)
+        flux_sum = calculate_common_substrate_flux(model)
     else:
-        flux_sum=0
-    reac_id=[]
+        flux_sum = 0
+    reac_id = []
     for s in model.reactions:
-            reac_id.append(s.id)
+        reac_id.append(s.id)
     print('---------------------')
     for s in SVGObject._subElements:
-        #str(s.__class__) <> 'core.TextContent':
+        # str(s.__class__) <> 'core.TextContent':
         if not isinstance(s, pysvg.core.TextContent):
-            if isinstance(s, pysvg.structure.G): #str(s.__class__) == 'structure.g':
-                for s1 in s._subElements:                      
-                    #if str(s1.__class__) != 'core.TextContent':
+            if isinstance(s, pysvg.structure.G):  # str(s.__class__) == 'structure.g':
+                for s1 in s._subElements:
+                    # if str(s1.__class__) != 'core.TextContent':
                     if not isinstance(s1, pysvg.core.TextContent):
-                        set_reaction_id_from_sympheny(s1,' ',d=0)                       ## to put ID on reaction class group elements
-                        set_metabolite_id_from_sympheny(s1,' ',d=0)                     ## to put ID on metabolite class group elements
-                        TravSVGFBA(s1,model,SolutionAnalysis,'',flux_sum,reac_id)              ## for calculating colors and etc
-    SVGObject.save('pysvg_developed_file.svg')
-    print ('Network has been drawn')
-    insert_interactive_script(file_source_path)
-    insert_metab_id(file_source_path,prod,subst,count)
-    print ('metab id has been drawn added')
-
-        
+                        set_reaction_id_from_sympheny(s1, ' ', d=0)  ## to put ID on reaction class group elements
+                        set_metabolite_id_from_sympheny(s1, ' ', d=0)  ## to put ID on metabolite class group elements
+                        TravSVGFBA(s1, model, SolutionAnalysis, '', flux_sum,
+                                   reac_id)  ## for calculating colors and etc
+    SVGObject.save(intermediate_filename)
+    print('Network has been drawn')
+    insert_interactive_script(file_source_path, intermediate_filename)
+    insert_metab_id(file_source_path, output_filename, intermediate_filename)
+    if intermediate_filename == 'pysvg_developed_file.svg':
+        os.remove(intermediate_filename)
+    print('metab id has been drawn added')
 
 
         
@@ -215,14 +218,15 @@ def TravSVGFBA (svgobj,model,SolutionAnalysis,Reac,flux_sum,reac_id,d=0):
                                 l.setContent(Reac + ' ' + str(SolutionAnalysis.loc[Reac,'minimum']) + ' ' + str(SolutionAnalysis.loc[Reac,'maximum']))
                 if str(s.getAttribute('class')) == 'node':
                     Metab=s.getAttribute('id_metabolite')
-                    info_metab=model.metabolites.get_by_id(Metab)
-                    s.setAttribute(attribute_name='Charge',attribute_value=info_metab.charge)    
-                    s.setAttribute(attribute_name='Compartment',attribute_value=info_metab.compartment) 
-                    s.setAttribute(attribute_name='Elements',attribute_value=info_metab.elements) 
-                    s.setAttribute(attribute_name='Formula',attribute_value=info_metab.formula) 
-                    s.setAttribute(attribute_name='Name',attribute_value=info_metab.name) 
-                    s.setAttribute(attribute_name='Shadow_price',attribute_value=info_metab.shadow_price) 
-                    TravSVGFBA(s,model,SolutionAnalysis,Reac,flux_sum,reac_id,d+1)
+                    if Metab is not None:
+                        info_metab=model.metabolites.get_by_id(Metab)
+                        s.setAttribute(attribute_name='Charge',attribute_value=info_metab.charge)
+                        s.setAttribute(attribute_name='Compartment',attribute_value=info_metab.compartment)
+                        s.setAttribute(attribute_name='Elements',attribute_value=info_metab.elements)
+                        s.setAttribute(attribute_name='Formula',attribute_value=info_metab.formula)
+                        s.setAttribute(attribute_name='Name',attribute_value=info_metab.name)
+                        s.setAttribute(attribute_name='Shadow_price',attribute_value=info_metab.shadow_price)
+                        TravSVGFBA(s,model,SolutionAnalysis,Reac,flux_sum,reac_id,d+1)
                 if str(s.getAttribute('class')) == 'node-circle metabolite-circle':
                     print ("")
     
@@ -401,9 +405,9 @@ def InsertScripCall(source_file_path, pattern, substring):
 
 
 
-def IsScripHtmlInsertNeeded() :
+def IsScripHtmlInsertNeeded(intermediate_filename) :
     isInsertNeeded = True
-    with open('pysvg_developed_file.svg', 'r') as f:
+    with open(intermediate_filename, 'r') as f:
         lines = f.readlines()
         f.seek(0)
         for line in lines:
@@ -417,13 +421,13 @@ def IsScripHtmlInsertNeeded() :
         return isInsertNeeded
 
 
-def AddPopupForElementReaction(lineToChange) :                  ####### savestring
+def AddPopupForElementReaction(lineToChange, intermediate_filename):                  ####### savestring
     lineNew = "onclick='ShowTooltip(this, evt)' \n " + lineToChange
-    InsertScripCall('pysvg_developed_file.svg', lineToChange, lineNew)
+    InsertScripCall(intermediate_filename, lineToChange, lineNew)
 
 
-def AddScriptAndPopup(placeToEnd, insert_lines) :
-    with open('pysvg_developed_file.svg', 'r+') as myfile:
+def AddScriptAndPopup(placeToEnd, insert_lines, intermediate_filename):
+    with open(intermediate_filename, 'r+') as myfile:
         lines = myfile.readlines()
         if placeToEnd :
             lines[-2:-2] = insert_lines
@@ -434,13 +438,13 @@ def AddScriptAndPopup(placeToEnd, insert_lines) :
     myfile.close()
     
     
-def insert_interactive_script(file_source_path):    
+def insert_interactive_script(file_source_path, intermediate_filename):
     from tempfile import mkstemp
     from shutil import move
     from os import remove
 
 
-    path =  'pysvg_developed_file.svg'
+    path = intermediate_filename
 
     
     cssToInsert = cssToInsert = """<defs>
@@ -649,20 +653,20 @@ def insert_interactive_script(file_source_path):
     
     
 
-    if IsScripHtmlInsertNeeded():        
-        AddScriptAndPopup(False, [cssToInsert, scriptToInsert, htmlOverlayToInsert])
-        AddScriptAndPopup(True, [htmlPopupToInsert])
-        AddPopupForElementReaction('class="node"')
-        AddPopupForElementReaction('class="reaction"')
+    if IsScripHtmlInsertNeeded(intermediate_filename):
+        AddScriptAndPopup(False, [cssToInsert, scriptToInsert, htmlOverlayToInsert], intermediate_filename)
+        AddScriptAndPopup(True, [htmlPopupToInsert], intermediate_filename)
+        AddPopupForElementReaction('class="node"', intermediate_filename)
+        AddPopupForElementReaction('class="reaction"', intermediate_filename)
 
-def insert_metab_id(file_source_path,prod,subst,count):
+def insert_metab_id(file_source_path,output_filename, intermediate_filename):
     ET.register_namespace('svg', "http://www.w3.org/2000/svg")
 
     pathOriginalFile = file_source_path
     treeOriginalFile = ET.parse(pathOriginalFile)
     rootOriginalFile = treeOriginalFile.getroot()
 
-    pathPySVGFile ='pysvg_developed_file.svg'
+    pathPySVGFile = intermediate_filename
     treePySVGFile = ET.parse(pathPySVGFile)
     rootPySVGFile = treePySVGFile.getroot()
 
@@ -689,10 +693,12 @@ def insert_metab_id(file_source_path,prod,subst,count):
                         if (metIdPySVGFile is not None):
                             nodePySVGFile.set('id_metabolite', str(metIdOriginalFile))
 
-    treePySVGFile.write(str(prod) + "_" + str(subst) + "_" + str(count) + '.svg') 
-    os.remove('pysvg_developed_file.svg')
+    treePySVGFile.write(output_filename)
 
 
+
+def final_output_svg_file_name(prod, subst, count):
+    return str(prod) + "_" + str(subst) + "_" + str(count) + '.svg'
 
 
 
