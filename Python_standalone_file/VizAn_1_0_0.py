@@ -136,34 +136,36 @@ def Call_Vizan(model,SolutionAnalysis,SolutionType,prod,subst,count):
         root = tk.Tk()
         root.withdraw()
         file_source_path=tk.filedialog.askopenfilename()
-        
-        
-    SVGObject=parse2(file_source_path)
+
+    call_vizan_cli(model, file_source_path, SolutionAnalysis, SolutionType, prod, subst, count)
+
+
+def call_vizan_cli(model, file_source_path, SolutionAnalysis, SolutionType, prod, subst, count):
+    SVGObject = parse2(file_source_path)
     if type(SolutionAnalysis) == cobra.core.solution.Solution:
-        flux_sum=calculate_common_substrate_flux(model)
+        flux_sum = calculate_common_substrate_flux(model)
     else:
-        flux_sum=0
-    reac_id=[]
+        flux_sum = 0
+    reac_id = []
     for s in model.reactions:
-            reac_id.append(s.id)
+        reac_id.append(s.id)
     print('---------------------')
     for s in SVGObject._subElements:
-        #str(s.__class__) <> 'core.TextContent':
+        # str(s.__class__) <> 'core.TextContent':
         if not isinstance(s, pysvg.core.TextContent):
-            if isinstance(s, pysvg.structure.G): #str(s.__class__) == 'structure.g':
-                for s1 in s._subElements:                      
-                    #if str(s1.__class__) != 'core.TextContent':
+            if isinstance(s, pysvg.structure.G):  # str(s.__class__) == 'structure.g':
+                for s1 in s._subElements:
+                    # if str(s1.__class__) != 'core.TextContent':
                     if not isinstance(s1, pysvg.core.TextContent):
-                        set_reaction_id_from_sympheny(s1,' ',d=0)                       ## to put ID on reaction class group elements
-                        set_metabolite_id_from_sympheny(s1,' ',d=0)                     ## to put ID on metabolite class group elements
-                        TravSVGFBA(s1,model,SolutionAnalysis,'',flux_sum,reac_id)              ## for calculating colors and etc
+                        set_reaction_id_from_sympheny(s1, ' ', d=0)  ## to put ID on reaction class group elements
+                        set_metabolite_id_from_sympheny(s1, ' ', d=0)  ## to put ID on metabolite class group elements
+                        TravSVGFBA(s1, model, SolutionAnalysis, '', flux_sum,
+                                   reac_id)  ## for calculating colors and etc
     SVGObject.save('pysvg_developed_file.svg')
-    print ('Network has been drawn')
+    print('Network has been drawn')
     insert_interactive_script(file_source_path)
-    insert_metab_id(file_source_path,prod,subst,count)
-    print ('metab id has been drawn added')
-
-        
+    insert_metab_id(file_source_path, prod, subst, count)
+    print('metab id has been drawn added')
 
 
         
