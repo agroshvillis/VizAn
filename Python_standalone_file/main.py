@@ -28,7 +28,7 @@ def perform_visualisation(model_file_path='iML1515.json', svg_file_path='E_coli_
             analysis_results = fba_results
         elif analysis_type == 'FVA':
             fva_results = flux_variability_analysis(model, fraction_of_optimum=0.5)
-            fva_results.round(3)
+            fva_results = fva_results.round(3)
             analysis_results = fva_results
 
     prod = 'prod'
