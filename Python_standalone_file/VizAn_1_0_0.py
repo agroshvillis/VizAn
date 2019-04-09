@@ -165,6 +165,8 @@ def call_vizan_cli(model, file_source_path, SolutionAnalysis, SolutionType, outp
     print('Network has been drawn')
     insert_interactive_script(file_source_path, intermediate_filename)
     insert_metab_id(file_source_path, output_filename, intermediate_filename)
+    if intermediate_filename == 'pysvg_developed_file.svg':
+        os.remove(intermediate_filename)
     print('metab id has been drawn added')
 
 
@@ -692,7 +694,7 @@ def insert_metab_id(file_source_path,output_filename, intermediate_filename):
                             nodePySVGFile.set('id_metabolite', str(metIdOriginalFile))
 
     treePySVGFile.write(output_filename)
-    os.remove(intermediate_filename)
+
 
 
 def final_output_svg_file_name(prod, subst, count):
