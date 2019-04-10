@@ -16,6 +16,31 @@ Python 2.7/3.5+ and PyPy.
 
     $ pip install VizAn
 
+Usage
+-------------
+
+.. code-block:: python
+
+    import vizan
+    model_filename = 'iML1515.json'
+    svg_filename = 'E_coli_source.svg'
+    output_filename = 'Result.svg'
+    vizan.create_visualisation(model_filename, svg_filename, output_filename, analysis_type='FBA')
+
+Development
+-----------
+
+To install the development version from Github:
+
+.. code-block:: bash
+
+    git clone https://github.com/lv-csbg/VizAn.git
+    cd VizAn
+    pip install .
+
+Old Guide
+---------
+
 Old installation guide
 ______________________
 
