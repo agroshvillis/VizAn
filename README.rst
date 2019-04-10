@@ -22,9 +22,9 @@ Usage
 .. code-block:: python
 
     import vizan
-    model_filename = 'iML1515.json'
-    svg_filename = 'E_coli_source.svg'
-    output_filename = 'Result.svg'
+    model_filename = 'data/iML1515.json'
+    svg_filename = 'data/E_coli_source.svg'
+    output_filename = 'FBA_result.svg'
     vizan.create_visualisation(model_filename, svg_filename, output_filename, analysis_type='FBA')
 
 Development
