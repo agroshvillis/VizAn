@@ -25,7 +25,7 @@ Usage
     model_filename = 'data/iML1515.json'
     svg_filename = 'data/E_coli_source.svg'
     output_filename = 'FBA_result.svg'
-    vizan.create_visualisation(model_filename, svg_filename, output_filename, analysis_type='FBA')
+    vizan.visualise(model_filename, svg_filename, output_filename, analysis_type='FBA')
 
 Development
 -----------

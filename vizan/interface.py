@@ -45,7 +45,7 @@ def call_vizan_cli(model, file_source_path, SolutionAnalysis, SolutionType, outp
                            intermediate_filename)
 
 
-def create_visualisation(model_filename, svg_filename, output_filename, analysis_type='FBA',
-                         analysis_results=None):
+def visualise(model_filename, svg_filename, output_filename, analysis_type='FBA',
+              analysis_results=None):
     return _create_visualisation(model_filename, svg_filename, output_filename, analysis_type,
                                  analysis_results)
