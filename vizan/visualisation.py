@@ -1,31 +1,16 @@
-#####
-#########################  Main function to call VizAn
-########## Call_Vizan(model,file_source_path,sol,SolutionType,prod,subst,count)
-#################### model - metabolic model of organism
-#################### file_source_path - using tkinker open window choose metabolic network layout file in SVG format developed according to the manual 
-#################### SolutionAnalysis - Flux Balance Analysis (FBA) or Flux Variability Analysis (FVA) optimisation results
-#################### SolutionType - optional input where "FBA": FBA type visualization "FVA" : FVA type visualization
-#################### prod - the analysis product name(s)
-#################### subst - the analysis substrate name(s)
-#################### count - arbitrary parameter for condition specific classification (any symbol or string)
-#####
-
-
-
-
-
+from __future__ import absolute_import
 import os
 import sys
 import json
 import numpy as np
 import pandas as pd
-import cobra
+import cobra.io as cio
+from cobra.core.solution import Solution as CobraSolution
 from cobra.flux_analysis import flux_variability_analysis
 import pysvg
-from tempfile import mkstemp
+from tempfile import mkstemp, NamedTemporaryFile
 from shutil import move
 from os import remove
-
 
 import xml.etree.ElementTree as ET
 
@@ -33,116 +18,46 @@ from xml.dom import minidom
 from xml.dom import Node
 
 from pysvg.structure import Svg
+
 for subpackage in ['core', 'filter', 'gradient', 'linking', 'script', 'shape', 'structure', 'style', 'text']:
     try:
         exec('from pysvg.' + subpackage + ' import *')
     except ImportError:
         pass
-    
-    
-def init_coli_model_FBA(prod,subst,count):
-    model=cobra.io.load_json_model('iML1515.json')
-    sol=model.optimize()
-    sol.fluxes=sol.fluxes.round(5)
-        
-    SolutionType="FBA"    
-    Call_Vizan(model,sol,SolutionType,prod,subst,count)
-    
-def init_coli_model_FVA(prod,subst,count):
-    model=cobra.io.load_json_model('iML1515.json')
-    fva_results=flux_variability_analysis(model, fraction_of_optimum=0.5)
-    fva_results=fva_results.round(3)  
-        
-        
-    SolutionType="FVA"    
-    Call_VizAn(model,fva_results,SolutionType,prod,subst,count)
-
-    
-    
-##_______________________________________________________________________________________________________________________
 
 
-
-def calculateMethodName(attr):
-    name=attr
-    name=name.replace(':','_')
-    name=name.replace('-','_')
-    name='set_'+name
-    return name
-
-def setAttributes(attrs,obj):
-    for attr in attrs.keys():
-        if hasattr(obj, calculateMethodName(attr)):
-            eval ('obj.'+calculateMethodName(attr))(attrs[attr].value)
-
-def build2(node_, object):
-    attrs = node_.attributes
-
-    if attrs != None:
-        setAttributes(attrs, object)
-
-    for child_ in node_.childNodes:
-        nodeName_ = child_.nodeName.split(':')[-1]
-        if child_.nodeType == Node.ELEMENT_NODE:
-            objectinstance = None
-            try:
-                objectinstance = eval(nodeName_.title())()
-            except:
-                continue
-            if objectinstance is not None:
-                object.addElement(build2(child_,objectinstance))
-        elif child_.nodeType == Node.TEXT_NODE:
-            if child_.nodeValue != None:
-                object.appendTextContent(child_.nodeValue)
-        elif child_.nodeType == Node.CDATA_SECTION_NODE:  
-            object.appendTextContent('<![CDATA['+child_.nodeValue+']]>')          
-        elif child_.nodeType == Node.COMMENT_NODE:  
-            object.appendTextContent('<!-- '+child_.nodeValue+' -->')          
-        else:
-            continue
-    return object
-
-def parse2(inFileName):
-    doc = minidom.parse(inFileName)
-    rootNode = doc.documentElement
-    rootObj = Svg()
-    build2(rootNode,rootObj)
-    doc = None
-    return rootObj
+def _create_visualisation(model_filename, svg_filename, output_filename, analysis_type='FBA',
+                          analysis_results=None, intermediate_filename=None):
+    model = cio.load_json_model(model_filename)
+    if analysis_results is None:
+        fba_results = model.optimize()
+        if analysis_type == 'FBA':
+            fba_results.fluxes = fba_results.fluxes.round(5)
+            analysis_results = fba_results
+        elif analysis_type == 'FVA':
+            fva_results = flux_variability_analysis(model, fraction_of_optimum=0.5)
+            fva_results = fva_results.round(3)
+            analysis_results = fva_results
+    vizan_kwargs = {
+        'model': model,
+        'file_source_path': svg_filename,
+        'SolutionAnalysis': analysis_results,
+        'SolutionType': analysis_type,
+        'output_filename': output_filename,
+    }
+    if intermediate_filename is None:
+        with NamedTemporaryFile(mode="w") as intermediate_file:
+            vizan_kwargs['intermediate_filename'] = intermediate_file.name
+            _call_vizan_cli(**vizan_kwargs)
+    else:
+        vizan_kwargs['intermediate_filename'] = intermediate_filename
+        _call_vizan_cli(**vizan_kwargs)
 
 
-
-##___________________________________________________________________________________________________________________
-    
-   
-    
-    
-def Call_Vizan(model,SolutionAnalysis,SolutionType,prod,subst,count):
-    try:
-    # for Python2
-        import Tkinter as tk
-        from tkinter import tkFileDialog
-    
-        root = tk.Tk()
-        root.withdraw()
-        file_source_path = tkFileDialog.askopenfilename()
-    
-    except ImportError:
-    
-    # for Python3
-        import tkinter as tk
-        from tkinter import filedialog
-    
-        root = tk.Tk()
-        root.withdraw()
-        file_source_path=tk.filedialog.askopenfilename()
-    output_filename = final_output_svg_file_name(prod, subst, count)
-    call_vizan_cli(model, file_source_path, SolutionAnalysis, SolutionType, output_filename)
-
-
-def call_vizan_cli(model, file_source_path, SolutionAnalysis, SolutionType, output_filename, intermediate_filename='pysvg_developed_file.svg'):
+def _call_vizan_cli(model, file_source_path, SolutionAnalysis, SolutionType, output_filename,
+                    intermediate_filename='pysvg_developed_file.svg'):
     SVGObject = parse2(file_source_path)
-    if type(SolutionAnalysis) == cobra.core.solution.Solution:
+    if type(SolutionAnalysis) == CobraSolution:
         flux_sum = calculate_common_substrate_flux(model)
     else:
         flux_sum = 0
@@ -170,95 +85,148 @@ def call_vizan_cli(model, file_source_path, SolutionAnalysis, SolutionType, outp
     print('metab id has been drawn added')
 
 
-        
-        
+def calculateMethodName(attr):
+    name = attr
+    name = name.replace(':', '_')
+    name = name.replace('-', '_')
+    name = 'set_' + name
+    return name
+
+
+def setAttributes(attrs, obj):
+    for attr in attrs.keys():
+        if hasattr(obj, calculateMethodName(attr)):
+            eval('obj.' + calculateMethodName(attr))(attrs[attr].value)
+
+
+def build2(node_, object):
+    attrs = node_.attributes
+
+    if attrs != None:
+        setAttributes(attrs, object)
+
+    for child_ in node_.childNodes:
+        nodeName_ = child_.nodeName.split(':')[-1]
+        if child_.nodeType == Node.ELEMENT_NODE:
+            objectinstance = None
+            try:
+                objectinstance = eval(nodeName_.title())()
+            except:
+                continue
+            if objectinstance is not None:
+                object.addElement(build2(child_, objectinstance))
+        elif child_.nodeType == Node.TEXT_NODE:
+            if child_.nodeValue != None:
+                object.appendTextContent(child_.nodeValue)
+        elif child_.nodeType == Node.CDATA_SECTION_NODE:
+            object.appendTextContent('<![CDATA[' + child_.nodeValue + ']]>')
+        elif child_.nodeType == Node.COMMENT_NODE:
+            object.appendTextContent('<!-- ' + child_.nodeValue + ' -->')
+        else:
+            continue
+    return object
+
+
+def parse2(inFileName):
+    doc = minidom.parse(inFileName)
+    rootNode = doc.documentElement
+    rootObj = Svg()
+    build2(rootNode, rootObj)
+    doc = None
+    return rootObj
+
+
+##___________________________________________________________________________________________________________________
+
+
 class Style2(dict):
     def __init__(self, instr=""):
         for kv in instr.split(";"):
             if kv != '':
-                k,v = kv.split(":")
-                self[k.strip()]  = v.strip()
-         
-    def changeColorText(self,color,attr):		## not only color but also attribute property
-        for k in self:
-            if k==attr:
-                self[k.strip()]=color
+                k, v = kv.split(":")
+                self[k.strip()] = v.strip()
 
-    def __str__ (self):
+    def changeColorText(self, color, attr):  ## not only color but also attribute property
+        for k in self:
+            if k == attr:
+                self[k.strip()] = color
+
+    def __str__(self):
         rv = ""
         for k in self:
-            rv += k +":" + self[k] + ";"
+            rv += k + ":" + self[k] + ";"
         return str(rv)
 
-    
-def TravSVGFBA (svgobj,model,SolutionAnalysis,Reac,flux_sum,reac_id,d=0):		
-        for s in svgobj._subElements:				            
-            if not isinstance(s, pysvg.core.TextContent):
-                if str(s.getAttribute('class')) == 'reaction' and str(s.getAttribute('id')) in reac_id:						   
-                    Reac=str(s.getAttribute('id'))
-                    info_reac=model.reactions.get_by_id(Reac)  
-                    s.setAttribute(attribute_name='Name',attribute_value=info_reac.name)    
-                    s.setAttribute(attribute_name='Stoichiometry',attribute_value=info_reac.reaction)    
-                    s.setAttribute(attribute_name='GPR',attribute_value=str(info_reac.gene_reaction_rule))    
-                    s.setAttribute(attribute_name='Lower_bound',attribute_value=str(info_reac.lower_bound))
-                    s.setAttribute(attribute_name='Upper_bound',attribute_value=str(info_reac.upper_bound))
-                    TravSVGFBA(s,model,SolutionAnalysis,Reac,flux_sum,reac_id,d+1)
-                if str(s.getAttribute('class')) == 'segment-group' or s.getAttribute('class') == 'arrowheads' or str(s.getAttribute('class')) == 'reaction-label-group':
-                    TravSVGFBA(s,model,SolutionAnalysis,Reac,flux_sum,reac_id,d+1)       
-                if str(s.getAttribute('class')) == 'segment' and Reac in reac_id:
-                    setColorSVGFBA(s,Reac,SolutionAnalysis,'stroke',flux_sum) 
-                if str(s.getAttribute('class')) == 'arrowhead' and Reac in reac_id:
-                    setColorSVGFBA(s,Reac,SolutionAnalysis,'fill',flux_sum) 
-                if str(s.getAttribute('class')) == 'reaction-label label' and Reac in reac_id:
-                    for l in s._subElements:
-                        if isinstance(l, pysvg.core.TextContent): 
-                            if type(SolutionAnalysis) == cobra.core.solution.Solution:
-                                l.setContent(Reac + ' ' + str(SolutionAnalysis[Reac])) 
-                            if type(SolutionAnalysis) == pd.core.frame.DataFrame:
-                                l.setContent(Reac + ' ' + str(SolutionAnalysis.loc[Reac,'minimum']) + ' ' + str(SolutionAnalysis.loc[Reac,'maximum']))
-                if str(s.getAttribute('class')) == 'node':
-                    Metab=s.getAttribute('id_metabolite')
-                    if Metab is not None:
-                        info_metab=model.metabolites.get_by_id(Metab)
-                        s.setAttribute(attribute_name='Charge',attribute_value=info_metab.charge)
-                        s.setAttribute(attribute_name='Compartment',attribute_value=info_metab.compartment)
-                        s.setAttribute(attribute_name='Elements',attribute_value=info_metab.elements)
-                        s.setAttribute(attribute_name='Formula',attribute_value=info_metab.formula)
-                        s.setAttribute(attribute_name='Name',attribute_value=info_metab.name)
-                        s.setAttribute(attribute_name='Shadow_price',attribute_value=info_metab.shadow_price)
-                        TravSVGFBA(s,model,SolutionAnalysis,Reac,flux_sum,reac_id,d+1)
-                if str(s.getAttribute('class')) == 'node-circle metabolite-circle':
-                    print ("")
-    
+
+def TravSVGFBA(svgobj, model, SolutionAnalysis, Reac, flux_sum, reac_id, d=0):
+    for s in svgobj._subElements:
+        if not isinstance(s, pysvg.core.TextContent):
+            if str(s.getAttribute('class')) == 'reaction' and str(s.getAttribute('id')) in reac_id:
+                Reac = str(s.getAttribute('id'))
+                info_reac = model.reactions.get_by_id(Reac)
+                s.setAttribute(attribute_name='Name', attribute_value=info_reac.name)
+                s.setAttribute(attribute_name='Stoichiometry', attribute_value=info_reac.reaction)
+                s.setAttribute(attribute_name='GPR', attribute_value=str(info_reac.gene_reaction_rule))
+                s.setAttribute(attribute_name='Lower_bound', attribute_value=str(info_reac.lower_bound))
+                s.setAttribute(attribute_name='Upper_bound', attribute_value=str(info_reac.upper_bound))
+                TravSVGFBA(s, model, SolutionAnalysis, Reac, flux_sum, reac_id, d + 1)
+            if str(s.getAttribute('class')) == 'segment-group' or s.getAttribute('class') == 'arrowheads' or str(
+                    s.getAttribute('class')) == 'reaction-label-group':
+                TravSVGFBA(s, model, SolutionAnalysis, Reac, flux_sum, reac_id, d + 1)
+            if str(s.getAttribute('class')) == 'segment' and Reac in reac_id:
+                setColorSVGFBA(s, Reac, SolutionAnalysis, 'stroke', flux_sum)
+            if str(s.getAttribute('class')) == 'arrowhead' and Reac in reac_id:
+                setColorSVGFBA(s, Reac, SolutionAnalysis, 'fill', flux_sum)
+            if str(s.getAttribute('class')) == 'reaction-label label' and Reac in reac_id:
+                for l in s._subElements:
+                    if isinstance(l, pysvg.core.TextContent):
+                        if type(SolutionAnalysis) == CobraSolution:
+                            l.setContent(Reac + ' ' + str(SolutionAnalysis[Reac]))
+                        if type(SolutionAnalysis) == pd.core.frame.DataFrame:
+                            l.setContent(Reac + ' ' + str(SolutionAnalysis.loc[Reac, 'minimum']) + ' ' + str(
+                                SolutionAnalysis.loc[Reac, 'maximum']))
+            if str(s.getAttribute('class')) == 'node':
+                Metab = s.getAttribute('id_metabolite')
+                if Metab is not None:
+                    info_metab = model.metabolites.get_by_id(Metab)
+                    s.setAttribute(attribute_name='Charge', attribute_value=info_metab.charge)
+                    s.setAttribute(attribute_name='Compartment', attribute_value=info_metab.compartment)
+                    s.setAttribute(attribute_name='Elements', attribute_value=info_metab.elements)
+                    s.setAttribute(attribute_name='Formula', attribute_value=info_metab.formula)
+                    s.setAttribute(attribute_name='Name', attribute_value=info_metab.name)
+                    s.setAttribute(attribute_name='Shadow_price', attribute_value=info_metab.shadow_price)
+                    TravSVGFBA(s, model, SolutionAnalysis, Reac, flux_sum, reac_id, d + 1)
+            if str(s.getAttribute('class')) == 'node-circle metabolite-circle':
+                print("")
 
 
-def setColorSVGFBA(svgobj,Reac,SolutionAnalysis,color_type,flux_sum):	
+def setColorSVGFBA(svgobj, Reac, SolutionAnalysis, color_type, flux_sum):
     styleText = Style2(str(svgobj.getAttribute('style')))
-    if type(SolutionAnalysis)==cobra.core.solution.Solution:
+    if type(SolutionAnalysis) == CobraSolution:
         if SolutionAnalysis[Reac] > 0:
-            styleText.changeColorText('#008000',color_type)
+            styleText.changeColorText('#008000', color_type)
         elif SolutionAnalysis[Reac] < 0:
-            styleText.changeColorText('#d40000',color_type)
+            styleText.changeColorText('#d40000', color_type)
         else:
-            styleText.changeColorText('#808000',color_type)
+            styleText.changeColorText('#808000', color_type)
         if color_type == 'stroke':
-            styleText.changeColorText(color=set_stroke_line_width_FBA(SolutionAnalysis,Reac,flux_sum),attr='stroke-width')
+            styleText.changeColorText(color=set_stroke_line_width_FBA(SolutionAnalysis, Reac, flux_sum),
+                                      attr='stroke-width')
     if type(SolutionAnalysis) == pd.core.frame.DataFrame:
-        styleText.changeColorText(color=set_stroke_line_width_FVA(SolutionAnalysis,Reac),attr='stroke-width')
-        if SolutionAnalysis.loc[Reac,'maximum']>0 and SolutionAnalysis.loc[Reac,'minimum'] >= 0: ## pozitivs !!
-            styleText.changeColorText('#008000',color_type)
-        if SolutionAnalysis.loc[Reac,'maximum']>0 and SolutionAnalysis.loc[Reac,'minimum'] < 0: ## abpusejs
-            styleText.changeColorText('#0024ff',color_type)
-        if SolutionAnalysis.loc[Reac,'maximum']< 0 and SolutionAnalysis.loc[Reac,'minimum'] < 0: ## negativs !!
-            styleText.changeColorText('#d40000',color_type)
-        if SolutionAnalysis.loc[Reac,'maximum']==0 and SolutionAnalysis.loc[Reac,'minimum'] == 0: ## nulee    
-            styleText.changeColorText('#000000',color_type)
+        styleText.changeColorText(color=set_stroke_line_width_FVA(SolutionAnalysis, Reac), attr='stroke-width')
+        if SolutionAnalysis.loc[Reac, 'maximum'] > 0 and SolutionAnalysis.loc[Reac, 'minimum'] >= 0:  ## pozitivs !!
+            styleText.changeColorText('#008000', color_type)
+        if SolutionAnalysis.loc[Reac, 'maximum'] > 0 and SolutionAnalysis.loc[Reac, 'minimum'] < 0:  ## abpusejs
+            styleText.changeColorText('#0024ff', color_type)
+        if SolutionAnalysis.loc[Reac, 'maximum'] < 0 and SolutionAnalysis.loc[Reac, 'minimum'] < 0:  ## negativs !!
+            styleText.changeColorText('#d40000', color_type)
+        if SolutionAnalysis.loc[Reac, 'maximum'] == 0 and SolutionAnalysis.loc[Reac, 'minimum'] == 0:  ## nulee
+            styleText.changeColorText('#000000', color_type)
         if color_type == 'stroke':
-            styleText.changeColorText(color=set_stroke_line_width_FVA(SolutionAnalysis,Reac),attr='stroke-width')
-    svgobj.setAttribute('style',str(styleText.__str__()))
-    
-    
-    
+            styleText.changeColorText(color=set_stroke_line_width_FVA(SolutionAnalysis, Reac), attr='stroke-width')
+    svgobj.setAttribute('style', str(styleText.__str__()))
+
+
 ##________________________________________________________________________
 
 def calculate_common_substrate_flux(model):
@@ -267,50 +235,42 @@ def calculate_common_substrate_flux(model):
     ##### generate model exchange reactions#####################
 
     fva_results = flux_variability_analysis(
-                    model, reaction_list=boundary_reactions,
-                    fraction_of_optimum=1)
+        model, reaction_list=boundary_reactions,
+        fraction_of_optimum=1)
     #### Generate FVA results   ###############################################
 
-
-    fva_results=fva_results.sort_values(by='minimum', ascending=True)
-
+    fva_results = fva_results.sort_values(by='minimum', ascending=True)
 
     ### sort FVA results ascending order###
 
-
     substrates = fva_results['minimum'] < 0
-    fva_results_substrates=fva_results[substrates].sort_values(by='minimum', ascending=True)
+    fva_results_substrates = fva_results[substrates].sort_values(by='minimum', ascending=True)
 
     #####   Generate dataframe where only consuming reactions are taken into account   #####
 
-
-    reac_consist_carbon=[]
+    reac_consist_carbon = []
     for reaction in fva_results_substrates.index:
-        reac_cobrapy=model.reactions.get_by_id(reaction)
+        reac_cobrapy = model.reactions.get_by_id(reaction)
         for metabolite in reac_cobrapy.reactants:
             if 'C' in metabolite.elements.keys():
                 reac_consist_carbon.append(str(reaction))
 
-
-    ###### Filter from FVA substrate list reactions which HAVE NOT included 
-
+    ###### Filter from FVA substrate list reactions which HAVE NOT included
 
     ##print reac_consist_carbon
-    flux_sum=0
+    flux_sum = 0
     for reaction in reac_consist_carbon:
-        flux_sum=flux_sum + fva_results.loc[reaction,'minimum']
+        flux_sum = flux_sum + fva_results.loc[reaction, 'minimum']
     return flux_sum
-
 
     ##### calculate flux sum how much is consumed all substrates (not taking into account carbon amount for each substrate)
     ## to do is take into account substrate carbon ratio for better flux calculation
-    
-    
-    
-def set_stroke_line_width_FBA(SolutionAnalysis,Reac,flux_sum):
-    Solution=abs(SolutionAnalysis[Reac])
-    flux_sum=abs(flux_sum)
-    if Solution>= flux_sum * 0.7 :
+
+
+def set_stroke_line_width_FBA(SolutionAnalysis, Reac, flux_sum):
+    Solution = abs(SolutionAnalysis[Reac])
+    flux_sum = abs(flux_sum)
+    if Solution >= flux_sum * 0.7:
         width = 21
     if Solution >= flux_sum * 0.5 and Solution < flux_sum * 0.7:
         width = 20
@@ -324,21 +284,23 @@ def set_stroke_line_width_FBA(SolutionAnalysis,Reac,flux_sum):
         width = 4
     return str(width)
 
-def set_stroke_line_width_FVA(SolutionAnalysis,Reac):
-##    max_diapazon=abs(SolutionAnalysis.max().loc['maximum']) + abs(SolutionAnalysis.max().loc['minimum']) ## kaut ko gudraaku vajag
-    max_diapazon=100
-    flux_diapasone=0
-    if SolutionAnalysis.loc[Reac,'maximum'] > 0 or SolutionAnalysis.loc[Reac,'maximum']== SolutionAnalysis.loc[Reac,'minimum']:   
-        flux_diapasone=SolutionAnalysis.loc[Reac,'maximum']-SolutionAnalysis.loc[Reac,'minimum']
-    if SolutionAnalysis.loc[Reac,'maximum'] < 0:
-        flux_diapasone=abs(SolutionAnalysis.loc[Reac,'maximum']+SolutionAnalysis.loc[Reac,'minimum'])
-    if flux_diapasone>= max_diapazon * 0.5 and flux_diapasone < max_diapazon or flux_diapasone > max_diapazon:
+
+def set_stroke_line_width_FVA(SolutionAnalysis, Reac):
+    ##    max_diapazon=abs(SolutionAnalysis.max().loc['maximum']) + abs(SolutionAnalysis.max().loc['minimum']) ## kaut ko gudraaku vajag
+    max_diapazon = 100
+    flux_diapasone = 0
+    if SolutionAnalysis.loc[Reac, 'maximum'] > 0 or SolutionAnalysis.loc[Reac, 'maximum'] == SolutionAnalysis.loc[
+        Reac, 'minimum']:
+        flux_diapasone = SolutionAnalysis.loc[Reac, 'maximum'] - SolutionAnalysis.loc[Reac, 'minimum']
+    if SolutionAnalysis.loc[Reac, 'maximum'] < 0:
+        flux_diapasone = abs(SolutionAnalysis.loc[Reac, 'maximum'] + SolutionAnalysis.loc[Reac, 'minimum'])
+    if flux_diapasone >= max_diapazon * 0.5 and flux_diapasone < max_diapazon or flux_diapasone > max_diapazon:
         width = 24
     if flux_diapasone >= max_diapazon * 0.25 and flux_diapasone < max_diapazon * 0.5:
         width = 20
     if flux_diapasone >= max_diapazon * 0.13 and flux_diapasone < max_diapazon * 0.25:
         width = 16
-    if flux_diapasone >= max_diapazon * 0.05  and flux_diapasone < max_diapazon * 0.13:
+    if flux_diapasone >= max_diapazon * 0.05 and flux_diapasone < max_diapazon * 0.13:
         width = 12
     if flux_diapasone >= max_diapazon * 0.0 and flux_diapasone < max_diapazon * 0.05:
         width = 8
@@ -346,50 +308,42 @@ def set_stroke_line_width_FVA(SolutionAnalysis,Reac):
 
 
 ##________________________________________________________________________
-    
-    
-    
-    
-    
-    
-def set_reaction_id_from_sympheny(svgobj, Reac=' ',d=0):
-        for s in svgobj._subElements:				  
-            if not isinstance(s, pysvg.core.TextContent):
-                if str(s.getAttribute('class')) == 'reaction':
-                    Reac=set_reaction_id_from_sympheny(s, Reac,d+1)
-                    if Reac != ' ' and d==0:
-                        name,reac_value = Reac.split(' ')
-                        s.setAttribute(attribute_name='id',attribute_value=name)  
-                if str(s.getAttribute('class')) == 'reaction-label-group':
-                    Reac=set_reaction_id_from_sympheny(s, Reac,d+1)
-                if str(s.getAttribute('class')) == 'reaction-label label':
-                    for l in s._subElements:
-                        if isinstance(l, pysvg.core.TextContent):
-                            Reac=str(l.content)
-        return Reac
-    
-    
-def set_metabolite_id_from_sympheny(svgobj, Metab=' ',d=0):
-        for s in svgobj._subElements:				  
-            if not isinstance(s, pysvg.core.TextContent):
-                if str(s.getAttribute('class')) == 'node':
-                    Metab=set_metabolite_id_from_sympheny(s, Metab,d+1)
-                    if Metab != ' ' and d==0:
-                        s.setAttribute(attribute_name='id_metabolite',attribute_value=Metab)  
-                if str(s.getAttribute('class')) == 'node-label label':
-                    for l in s._subElements:
-                        if isinstance(l, pysvg.core.TextContent): #str(l.__class__) == 'core.TextContent': 
-                            Metab=str(l.content)
-                            Metab=Metab[0:]
-        return Metab
-    
-    
-    
-    
-    
-    
- ##____________________________________________________________________________________________________________________
-    
+
+
+def set_reaction_id_from_sympheny(svgobj, Reac=' ', d=0):
+    for s in svgobj._subElements:
+        if not isinstance(s, pysvg.core.TextContent):
+            if str(s.getAttribute('class')) == 'reaction':
+                Reac = set_reaction_id_from_sympheny(s, Reac, d + 1)
+                if Reac != ' ' and d == 0:
+                    name, reac_value = Reac.split(' ')
+                    s.setAttribute(attribute_name='id', attribute_value=name)
+            if str(s.getAttribute('class')) == 'reaction-label-group':
+                Reac = set_reaction_id_from_sympheny(s, Reac, d + 1)
+            if str(s.getAttribute('class')) == 'reaction-label label':
+                for l in s._subElements:
+                    if isinstance(l, pysvg.core.TextContent):
+                        Reac = str(l.content)
+    return Reac
+
+
+def set_metabolite_id_from_sympheny(svgobj, Metab=' ', d=0):
+    for s in svgobj._subElements:
+        if not isinstance(s, pysvg.core.TextContent):
+            if str(s.getAttribute('class')) == 'node':
+                Metab = set_metabolite_id_from_sympheny(s, Metab, d + 1)
+                if Metab != ' ' and d == 0:
+                    s.setAttribute(attribute_name='id_metabolite', attribute_value=Metab)
+            if str(s.getAttribute('class')) == 'node-label label':
+                for l in s._subElements:
+                    if isinstance(l, pysvg.core.TextContent):  # str(l.__class__) == 'core.TextContent':
+                        Metab = str(l.content)
+                        Metab = Metab[0:]
+    return Metab
+
+
+##____________________________________________________________________________________________________________________
+
 
 def InsertScripCall(source_file_path, pattern, substring):
     from tempfile import mkstemp
@@ -402,10 +356,7 @@ def InsertScripCall(source_file_path, pattern, substring):
     move(target_file_path, source_file_path)
 
 
-
-
-
-def IsScripHtmlInsertNeeded(intermediate_filename) :
+def IsScripHtmlInsertNeeded(intermediate_filename):
     isInsertNeeded = True
     with open(intermediate_filename, 'r') as f:
         lines = f.readlines()
@@ -414,14 +365,14 @@ def IsScripHtmlInsertNeeded(intermediate_filename) :
             if 'overlayImageToCancelPopup' in line:
                 isInsertNeeded = False
                 break;
-        if isInsertNeeded :
-            print ('Update is completed');
-        else : 
-            print ('Update is not needed');
+        if isInsertNeeded:
+            print('Update is completed');
+        else:
+            print('Update is not needed');
         return isInsertNeeded
 
 
-def AddPopupForElementReaction(lineToChange, intermediate_filename):                  ####### savestring
+def AddPopupForElementReaction(lineToChange, intermediate_filename):  ####### savestring
     lineNew = "onclick='ShowTooltip(this, evt)' \n " + lineToChange
     InsertScripCall(intermediate_filename, lineToChange, lineNew)
 
@@ -429,24 +380,22 @@ def AddPopupForElementReaction(lineToChange, intermediate_filename):            
 def AddScriptAndPopup(placeToEnd, insert_lines, intermediate_filename):
     with open(intermediate_filename, 'r+') as myfile:
         lines = myfile.readlines()
-        if placeToEnd :
+        if placeToEnd:
             lines[-2:-2] = insert_lines
-        else : 
+        else:
             lines[1:1] = insert_lines
         myfile.seek(0)
         myfile.write(''.join(lines))
     myfile.close()
-    
-    
+
+
 def insert_interactive_script(file_source_path, intermediate_filename):
     from tempfile import mkstemp
     from shutil import move
     from os import remove
 
-
     path = intermediate_filename
 
-    
     cssToInsert = cssToInsert = """<defs>
         <style type="text/css"> #chart-1 { width: 100px; height: 220px; } .metric-chart { position: relative; margin: auto; } .y-axis-line-list, .x-axis-line-list, .y-axis-label-list, .x-axis-label-list, .y-axis-bar-list, .x-axis-bar-list { margin: 0; padding: 0; list-style: none; } .y-axis { position: absolute; left: 50px; top: 0px; bottom: 80px; right: auto; width: 1px; background-color: #434a54; } .y-axis-line-list { position: absolute; top: 10px; right: 0; bottom: 50px; left: 51px; } .y-axis-line-item { position: absolute; top: auto; right: 0; bottom: 0; left: 0; } .count-1 .y-axis-line-item:nth-of-type(1) { bottom: 100%; } .count-2 .y-axis-line-item:nth-of-type(1) { bottom: 50%; } .count-2 .y-axis-line-item:nth-of-type(2) { bottom: 100%; } .count-3 .y-axis-line-item:nth-of-type(1) { bottom: 33.333333333333336%; } .count-3 .y-axis-line-item:nth-of-type(2) { bottom: 66.66666666666667%; } .count-3 .y-axis-line-item:nth-of-type(3) { bottom: 100%; } .count-4 .y-axis-line-item:nth-of-type(1) { bottom: 25%; } .count-4 .y-axis-line-item:nth-of-type(2) { bottom: 50%; } .count-4 .y-axis-line-item:nth-of-type(3) { bottom: 75%; } .count-4 .y-axis-line-item:nth-of-type(4) { bottom: 100%; } .count-5 .y-axis-line-item:nth-of-type(1) { bottom: 20%; } .count-5 .y-axis-line-item:nth-of-type(2) { bottom: 40%; } .count-5 .y-axis-line-item:nth-of-type(3) { bottom: 60%; } .count-5 .y-axis-line-item:nth-of-type(4) { bottom: 80%; } .count-5 .y-axis-line-item:nth-of-type(5) { bottom: 100%; } .y-axis-line { display: block; height: 1px; background-color: #ccd1d9; } .y-axis-label-list { position: absolute; top: 10px; right: auto; bottom: 50px; left: 0; width: 40px; } .y-axis-label-item { position: absolute; top: auto; right: 0; bottom: 0; left: 0; } .count-1 .y-axis-label-item:nth-of-type(1) { bottom: 100%; } .count-2 .y-axis-label-item:nth-of-type(1) { bottom: 50%; } .count-2 .y-axis-label-item:nth-of-type(2) { bottom: 100%; } .count-3 .y-axis-label-item:nth-of-type(1) { bottom: 33.333333333333336%; } .count-3 .y-axis-label-item:nth-of-type(2) { bottom: 66.66666666666667%; } .count-3 .y-axis-label-item:nth-of-type(3) { bottom: 100%; } .count-4 .y-axis-label-item:nth-of-type(1) { bottom: 25%; } .count-4 .y-axis-label-item:nth-of-type(2) { bottom: 50%; } .count-4 .y-axis-label-item:nth-of-type(3) { bottom: 75%; } .count-4 .y-axis-label-item:nth-of-type(4) { bottom: 100%; } .count-5 .y-axis-label-item:nth-of-type(1) { bottom: 20%; } .count-5 .y-axis-label-item:nth-of-type(2) { bottom: 40%; } .count-5 .y-axis-label-item:nth-of-type(3) { bottom: 60%; } .count-5 .y-axis-label-item:nth-of-type(4) { bottom: 80%; } .count-5 .y-axis-label-item:nth-of-type(5) { bottom: 100%; } .y-axis-label { position: relative; display: block; color: #656d78; text-align: right; font-size: 12px; line-height: 1; } .h-bar-chart .y-axis-label { bottom: -6px; } .x-axis-bar-list { position: absolute; top: 0; right: 5px; bottom: 0px; left: 56px; } .x-axis-bar-item { position: absolute; top: 0px; /*high position */ right: auto; bottom: 32px; /*lowerposition */ left: 0; } .count-1 .x-axis-bar-item:nth-of-type(1) { right: 0%; left: 0%; } .x-axis-bar { position: absolute; top: auto; right: 5px; bottom: 0; left: 5px; display: block; border: 1px solid transparent; border-radius: 3px 3px 3px 3px; background-color: #4fc1e9; box-shadow: inset 0px 1px 0px rgba(255, 255, 255, 0.4); transition: all 0.15s linear; } .x-axis-bar.primary { border-color: #1f2225; background-image: -webkit-gradient(linear, 0% top, 100% top, from(#7e8692), to(#656d78)); background-image: -webkit-linear-gradient(left, color-stop(#7e8692 0%), color-stop(#656d78 100%)); background-image: -moz-linear-gradient(left, #7e8692 0%, #656d78 100%); background-image: linear-gradient(to right, #7e8692 0%, #656d78 100%); background-repeat: repeat-x; filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff7e8692', endColorstr='#ff656d78', GradientType=1); }</style>
    </defs>\n"""
@@ -511,12 +460,9 @@ def insert_interactive_script(file_source_path, intermediate_filename):
         </body>
     </foreignObject>\n"""
 
-
-
-
     scriptToInsert = """<script type="text/javascript">
         <![CDATA[
-        
+
         function IsMetabolite(parent) {
              return parent.getElementsByClassName('node-label label').length>0;
         }
@@ -589,11 +535,11 @@ def insert_interactive_script(file_source_path, intermediate_filename):
         function GetTextValueForPopup(inputText) {
             return (inputText == '') ? 'Not specified' : ClearElementData(inputText);
         }
-        
+
         function ClearElementData(inputElement) {
             return inputElement.replace(/_Plas/g, '').replace(/_Cyto/g, '').replace(/_Mitop/g, '').replace(/_Vaco/g, '').replace(/_tx/g, '').replace(/_c/g, '').replace(/_p/g, '').replace(/_e/g, '');
         }  
-    
+
         function HideTooltip() {
             var tooltip = document.getElementById('thepopup');
             tooltip.style.display = 'none';
@@ -647,11 +593,9 @@ def insert_interactive_script(file_source_path, intermediate_filename):
             barLinesArray[3].innerText = Math.round(maxValue - valueStep * 1);
             barLinesArray[4].innerText = Math.round(maxValue - valueStep * 0);
         }
-     
+
         ]]>
     </script>\n"""
-    
-    
 
     if IsScripHtmlInsertNeeded(intermediate_filename):
         AddScriptAndPopup(False, [cssToInsert, scriptToInsert, htmlOverlayToInsert], intermediate_filename)
@@ -659,7 +603,8 @@ def insert_interactive_script(file_source_path, intermediate_filename):
         AddPopupForElementReaction('class="node"', intermediate_filename)
         AddPopupForElementReaction('class="reaction"', intermediate_filename)
 
-def insert_metab_id(file_source_path,output_filename, intermediate_filename):
+
+def insert_metab_id(file_source_path, output_filename, intermediate_filename):
     ET.register_namespace('svg', "http://www.w3.org/2000/svg")
 
     pathOriginalFile = file_source_path
@@ -676,7 +621,7 @@ def insert_metab_id(file_source_path,output_filename, intermediate_filename):
         if (idElPySVGFile is not None):
             for nodeOriginalFile in rootOriginalFile.findall('{http://www.w3.org/2000/svg}text'):
                 idElOriginalFile = nodeOriginalFile.get('id')
-                if(idElOriginalFile == idElPySVGFile):
+                if (idElOriginalFile == idElPySVGFile):
                     metIdOriginalFile = nodeOriginalFile.get('id_metabolite')
                     if (metIdOriginalFile is not None):
                         if (metIdPySVGFile is not None):
@@ -687,21 +632,10 @@ def insert_metab_id(file_source_path,output_filename, intermediate_filename):
         if (idElPySVGFile is not None):
             for nodeOriginalFile in rootOriginalFile.findall('{http://www.w3.org/2000/svg}g'):
                 idElOriginalFile = nodeOriginalFile.get('id')
-                if(idElOriginalFile == idElPySVGFile):
+                if (idElOriginalFile == idElPySVGFile):
                     metIdOriginalFile = nodeOriginalFile.get('id_metabolite')
                     if (metIdOriginalFile is not None):
                         if (metIdPySVGFile is not None):
                             nodePySVGFile.set('id_metabolite', str(metIdOriginalFile))
 
     treePySVGFile.write(output_filename)
-
-
-
-def final_output_svg_file_name(prod, subst, count):
-    return str(prod) + "_" + str(subst) + "_" + str(count) + '.svg'
-
-
-
-
-        
-    
