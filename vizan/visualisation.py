@@ -1,25 +1,20 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+
 import os
-import sys
-import json
-import numpy as np
-import pandas as pd
+import xml.etree.ElementTree as ET
+from shutil import move
+from tempfile import NamedTemporaryFile
+from xml.dom import Node, minidom
+
 import cobra.io as cio
+import pandas as pd
+import pysvg
 from cobra.core.solution import Solution as CobraSolution
 from cobra.flux_analysis import flux_variability_analysis
-import pysvg
-from tempfile import mkstemp, NamedTemporaryFile
-from shutil import move
-from os import remove
-
-import xml.etree.ElementTree as ET
-
-from xml.dom import minidom
-from xml.dom import Node
-from .errors import CobraModelFileError, SVGMapFileError
-
 from pysvg.structure import Svg
+
+from .errors import CobraModelFileError, SVGMapFileError
 
 for subpackage in ['core', 'filter', 'gradient', 'linking', 'script', 'shape', 'structure', 'style', 'text']:
     try:
@@ -360,7 +355,7 @@ def InsertScripCall(source_file_path, pattern, substring):
         with open(source_file_path, 'r') as source_file:
             for line in source_file:
                 target_file.write(line.replace(pattern, substring))
-    remove(source_file_path)
+    os.remove(source_file_path)
     move(target_file_path, source_file_path)
 
 
@@ -398,10 +393,6 @@ def AddScriptAndPopup(placeToEnd, insert_lines, intermediate_filename):
 
 
 def insert_interactive_script(file_source_path, intermediate_filename):
-    from tempfile import mkstemp
-    from shutil import move
-    from os import remove
-
     path = intermediate_filename
 
     cssToInsert = cssToInsert = """<defs>
