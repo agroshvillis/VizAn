@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import os
 import sys
@@ -16,6 +17,7 @@ import xml.etree.ElementTree as ET
 
 from xml.dom import minidom
 from xml.dom import Node
+from .errors import CobraModelFileError, SVGMapFileError
 
 from pysvg.structure import Svg
 
@@ -28,7 +30,10 @@ for subpackage in ['core', 'filter', 'gradient', 'linking', 'script', 'shape', '
 
 def _create_visualisation(model_filename, svg_filename, output_filename, analysis_type='FBA',
                           analysis_results=None, intermediate_filename=None):
-    model = cio.load_json_model(model_filename)
+    try:
+        model = cio.load_json_model(model_filename)
+    except Exception as exc:
+        raise CobraModelFileError("Failed to load model from given JSON : {}".format(exc.args))
     if analysis_results is None:
         fba_results = model.optimize()
         if analysis_type == 'FBA':
@@ -56,7 +61,10 @@ def _create_visualisation(model_filename, svg_filename, output_filename, analysi
 
 def _call_vizan_cli(model, file_source_path, SolutionAnalysis, SolutionType, output_filename,
                     intermediate_filename='pysvg_developed_file.svg'):
-    SVGObject = parse2(file_source_path)
+    try:
+        SVGObject = parse2(file_source_path)
+    except Exception as exc:
+        raise SVGMapFileError("Failed to parse SVG pathway map : {}".format(exc.args))
     if type(SolutionAnalysis) == CobraSolution:
         flux_sum = calculate_common_substrate_flux(model)
     else:
