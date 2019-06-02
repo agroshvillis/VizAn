@@ -106,11 +106,15 @@ def traverse_svg_fba(svg_obj, model, analysis_results, reaction, flux_sum, react
             if str(s.getAttribute('class')) == 'reaction' and str(s.getAttribute('id')) in reaction_id:
                 reaction = str(s.getAttribute('id'))
                 info_reaction = model.reactions.get_by_id(reaction)
-                s.setAttribute(attribute_name='Name', attribute_value=info_reaction.name)
-                s.setAttribute(attribute_name='Stoichiometry', attribute_value=info_reaction.reaction)
-                s.setAttribute(attribute_name='GPR', attribute_value=str(info_reaction.gene_reaction_rule))
-                s.setAttribute(attribute_name='Lower_bound', attribute_value=str(info_reaction.lower_bound))
-                s.setAttribute(attribute_name='Upper_bound', attribute_value=str(info_reaction.upper_bound))
+                attributes = [
+                    ('Name', info_reaction.name),
+                    ('Stoichiometry', info_reaction.reaction),
+                    ('GPR', str(info_reaction.gene_reaction_rule)),
+                    ('Lower_bound', str(info_reaction.lower_bound)),
+                    ('Upper_bound', str(info_reaction.upper_bound)),
+                ]
+                for name, value in attributes:
+                    s.setAttribute(attribute_name=name, attribute_value=value)
                 traverse_svg_fba(s, model, analysis_results, reaction, flux_sum, reaction_id, d + 1)
             if str(s.getAttribute('class')) == 'segment-group' or s.getAttribute('class') == 'arrowheads' or str(
                     s.getAttribute('class')) == 'reaction-label-group':
@@ -131,12 +135,16 @@ def traverse_svg_fba(svg_obj, model, analysis_results, reaction, flux_sum, react
                 metabolite = s.getAttribute('id_metabolite')
                 if metabolite is not None:
                     info_metabolite = model.metabolites.get_by_id(metabolite)
-                    s.setAttribute(attribute_name='Charge', attribute_value=info_metabolite.charge)
-                    s.setAttribute(attribute_name='Compartment', attribute_value=info_metabolite.compartment)
-                    s.setAttribute(attribute_name='Elements', attribute_value=info_metabolite.elements)
-                    s.setAttribute(attribute_name='Formula', attribute_value=info_metabolite.formula)
-                    s.setAttribute(attribute_name='Name', attribute_value=info_metabolite.name)
-                    s.setAttribute(attribute_name='Shadow_price', attribute_value=info_metabolite.shadow_price)
+                    attributes = [
+                        ('Charge', info_metabolite.charge),
+                        ('Compartment', info_metabolite.compartment),
+                        ('Elements', info_metabolite.elements),
+                        ('Formula', info_metabolite.formula),
+                        ('Name', info_metabolite.name),
+                        ('Shadow_price', info_metabolite.shadow_price),
+                    ]
+                    for name, value in attributes:
+                        s.setAttribute(attribute_name=name, attribute_value=value)
                     traverse_svg_fba(s, model, analysis_results, reaction, flux_sum, reaction_id, d + 1)
             if str(s.getAttribute('class')) == 'node-circle metabolite-circle':
                 print("")
