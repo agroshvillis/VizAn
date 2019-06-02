@@ -100,17 +100,17 @@ class Style2(dict):
         return str(rv)
 
 
-def traverse_svg_fba(svgobj, model, analysis_results, reaction, flux_sum, reaction_id, d=0):
-    for s in svgobj._subElements:
+def traverse_svg_fba(svg_obj, model, analysis_results, reaction, flux_sum, reaction_id, d=0):
+    for s in svg_obj._subElements:
         if not isinstance(s, pysvg.core.TextContent):
             if str(s.getAttribute('class')) == 'reaction' and str(s.getAttribute('id')) in reaction_id:
                 reaction = str(s.getAttribute('id'))
-                info_reac = model.reactions.get_by_id(reaction)
-                s.setAttribute(attribute_name='Name', attribute_value=info_reac.name)
-                s.setAttribute(attribute_name='Stoichiometry', attribute_value=info_reac.reaction)
-                s.setAttribute(attribute_name='GPR', attribute_value=str(info_reac.gene_reaction_rule))
-                s.setAttribute(attribute_name='Lower_bound', attribute_value=str(info_reac.lower_bound))
-                s.setAttribute(attribute_name='Upper_bound', attribute_value=str(info_reac.upper_bound))
+                info_reaction = model.reactions.get_by_id(reaction)
+                s.setAttribute(attribute_name='Name', attribute_value=info_reaction.name)
+                s.setAttribute(attribute_name='Stoichiometry', attribute_value=info_reaction.reaction)
+                s.setAttribute(attribute_name='GPR', attribute_value=str(info_reaction.gene_reaction_rule))
+                s.setAttribute(attribute_name='Lower_bound', attribute_value=str(info_reaction.lower_bound))
+                s.setAttribute(attribute_name='Upper_bound', attribute_value=str(info_reaction.upper_bound))
                 traverse_svg_fba(s, model, analysis_results, reaction, flux_sum, reaction_id, d + 1)
             if str(s.getAttribute('class')) == 'segment-group' or s.getAttribute('class') == 'arrowheads' or str(
                     s.getAttribute('class')) == 'reaction-label-group':
@@ -130,20 +130,26 @@ def traverse_svg_fba(svgobj, model, analysis_results, reaction, flux_sum, reacti
             if str(s.getAttribute('class')) == 'node':
                 metabolite = s.getAttribute('id_metabolite')
                 if metabolite is not None:
-                    info_metab = model.metabolites.get_by_id(metabolite)
-                    s.setAttribute(attribute_name='Charge', attribute_value=info_metab.charge)
-                    s.setAttribute(attribute_name='Compartment', attribute_value=info_metab.compartment)
-                    s.setAttribute(attribute_name='Elements', attribute_value=info_metab.elements)
-                    s.setAttribute(attribute_name='Formula', attribute_value=info_metab.formula)
-                    s.setAttribute(attribute_name='Name', attribute_value=info_metab.name)
-                    s.setAttribute(attribute_name='Shadow_price', attribute_value=info_metab.shadow_price)
+                    info_metabolite = model.metabolites.get_by_id(metabolite)
+                    s.setAttribute(attribute_name='Charge', attribute_value=info_metabolite.charge)
+                    s.setAttribute(attribute_name='Compartment', attribute_value=info_metabolite.compartment)
+                    s.setAttribute(attribute_name='Elements', attribute_value=info_metabolite.elements)
+                    s.setAttribute(attribute_name='Formula', attribute_value=info_metabolite.formula)
+                    s.setAttribute(attribute_name='Name', attribute_value=info_metabolite.name)
+                    s.setAttribute(attribute_name='Shadow_price', attribute_value=info_metabolite.shadow_price)
                     traverse_svg_fba(s, model, analysis_results, reaction, flux_sum, reaction_id, d + 1)
             if str(s.getAttribute('class')) == 'node-circle metabolite-circle':
                 print("")
 
 
-def set_color_in_svg_fba(svgobj, reaction, analysis_results, color_type, flux_sum):
-    style_text = Style2(str(svgobj.getAttribute('style')))
+def set_color_in_svg_fba(svg_obj, reaction, analysis_results, color_type, flux_sum):
+    def reaction_max(this_reaction):
+        return analysis_results.loc[this_reaction, 'maximum']
+
+    def reaction_min(this_reaction):
+        return analysis_results.loc[this_reaction, 'minimum']
+
+    style_text = Style2(str(svg_obj.getAttribute('style')))
     if type(analysis_results) == CobraSolution:
         if analysis_results[reaction] > 0:
             style_text.change_color_text('#008000', color_type)
@@ -156,18 +162,19 @@ def set_color_in_svg_fba(svgobj, reaction, analysis_results, color_type, flux_su
                                          attr='stroke-width')
     if type(analysis_results) == pd.core.frame.DataFrame:
         style_text.change_color_text(color=set_stroke_line_width_fva(analysis_results, reaction), attr='stroke-width')
-        if analysis_results.loc[reaction, 'maximum'] > 0:
-            if analysis_results.loc[reaction, 'minimum'] >= 0:  # pozitivs !!
+        if reaction_max(reaction) > 0:
+            if reaction_min(reaction) >= 0:  # Positive !!
                 style_text.change_color_text('#008000', color_type)
-            else:  # abpusejs
+            else:  # Both Directions !!
                 style_text.change_color_text('#0024ff', color_type)
-        if analysis_results.loc[reaction, 'maximum'] < 0 and analysis_results.loc[reaction, 'minimum'] < 0:  # negativs !!
+        if reaction_max(reaction) < 0 and reaction_min(reaction) < 0:  # Negative !!
             style_text.change_color_text('#d40000', color_type)
-        if analysis_results.loc[reaction, 'maximum'] == 0 and analysis_results.loc[reaction, 'minimum'] == 0:  # nulee
+        if reaction_max(reaction) == 0 and reaction_min(reaction) == 0:  # Zero
             style_text.change_color_text('#000000', color_type)
         if color_type == 'stroke':
-            style_text.change_color_text(color=set_stroke_line_width_fva(analysis_results, reaction), attr='stroke-width')
-    svgobj.setAttribute('style', str(style_text.__str__()))
+            style_text.change_color_text(color=set_stroke_line_width_fva(analysis_results, reaction),
+                                         attr='stroke-width')
+    svg_obj.setAttribute('style', str(style_text.__str__()))
 
 
 def set_stroke_line_width_fba(analysis_results, reaction, flux_sum):
@@ -190,35 +197,42 @@ def set_stroke_line_width_fba(analysis_results, reaction, flux_sum):
 
 
 def set_stroke_line_width_fva(analysis_results, reaction):
-    # max_diapazon=abs(analysis_results.max().loc['maximum']) + abs(analysis_results.max().loc['minimum']) ## kaut ko gudraaku vajag
-    max_diapazon = 100
-    flux_diapasone = 0
-    if analysis_results.loc[reaction, 'maximum'] > 0 or analysis_results.loc[reaction, 'maximum'] == \
-            analysis_results.loc[reaction, 'minimum']:
-        flux_diapasone = analysis_results.loc[reaction, 'maximum'] - analysis_results.loc[reaction, 'minimum']
-    if analysis_results.loc[reaction, 'maximum'] < 0:
-        flux_diapasone = abs(analysis_results.loc[reaction, 'maximum'] + analysis_results.loc[reaction, 'minimum'])
+    def reaction_max(this_reaction):
+        return analysis_results.loc[this_reaction, 'maximum']
+
+    def reaction_min(this_reaction):
+        return analysis_results.loc[this_reaction, 'minimum']
+
+    # max_diapason = abs(analysis_results.max().loc['maximum']) + \
+    #                abs(analysis_results.max().loc['minimum'])  # Need something more intelligent
+    max_diapason = 100
+    flux_diapason = 0
+    if reaction_max(reaction) > 0 or reaction_max(reaction) == \
+            reaction_min(reaction):
+        flux_diapason = reaction_max(reaction) - reaction_min(reaction)
+    if reaction_max(reaction) < 0:
+        flux_diapason = abs(reaction_max(reaction) + reaction_min(reaction))
     width = None
-    if max_diapazon * 0.5 <= flux_diapasone < max_diapazon or flux_diapasone > max_diapazon:
+    if max_diapason * 0.5 <= flux_diapason < max_diapason or flux_diapason > max_diapason:
         width = 24
-    if max_diapazon * 0.25 <= flux_diapasone < max_diapazon * 0.5:
+    if max_diapason * 0.25 <= flux_diapason < max_diapason * 0.5:
         width = 20
-    if max_diapazon * 0.13 <= flux_diapasone < max_diapazon * 0.25:
+    if max_diapason * 0.13 <= flux_diapason < max_diapason * 0.25:
         width = 16
-    if max_diapazon * 0.05 <= flux_diapasone < max_diapazon * 0.13:
+    if max_diapason * 0.05 <= flux_diapason < max_diapason * 0.13:
         width = 12
-    if max_diapazon * 0.0 <= flux_diapasone < max_diapazon * 0.05:
+    if max_diapason * 0.0 <= flux_diapason < max_diapason * 0.05:
         width = 8
     return str(width)
 
 
-def set_reaction_id_from_sympheny(svgobj, reaction=' ', d=0):
-    for s in svgobj._subElements:
+def set_reaction_id_from_sympheny(svg_obj, reaction=' ', d=0):
+    for s in svg_obj._subElements:
         if not isinstance(s, pysvg.core.TextContent):
             if str(s.getAttribute('class')) == 'reaction':
                 reaction = set_reaction_id_from_sympheny(s, reaction, d + 1)
                 if reaction != ' ' and d == 0:
-                    name, reac_value = reaction.split(' ')
+                    name, reaction_value = reaction.split(' ')
                     s.setAttribute(attribute_name='id', attribute_value=name)
             if str(s.getAttribute('class')) == 'reaction-label-group':
                 reaction = set_reaction_id_from_sympheny(s, reaction, d + 1)
@@ -229,8 +243,8 @@ def set_reaction_id_from_sympheny(svgobj, reaction=' ', d=0):
     return reaction
 
 
-def set_metabolite_id_from_sympheny(svgobj, metabolite=' ', d=0):
-    for s in svgobj._subElements:
+def set_metabolite_id_from_sympheny(svg_obj, metabolite=' ', d=0):
+    for s in svg_obj._subElements:
         if not isinstance(s, pysvg.core.TextContent):
             if str(s.getAttribute('class')) == 'node':
                 metabolite = set_metabolite_id_from_sympheny(s, metabolite, d + 1)
@@ -270,7 +284,7 @@ def is_script_html_insert_needed(intermediate_filename):
         return is_insert_needed
 
 
-def add_popup_for_element_reaction(line_to_change, intermediate_filename):  # savestring
+def add_popup_for_element_reaction(line_to_change, intermediate_filename):  # save string
     line_new = "onclick='ShowTooltip(this, evt)' \n " + line_to_change
     insert_scrip_call(intermediate_filename, line_to_change, line_new)
 
@@ -496,7 +510,7 @@ def insert_interactive_script(intermediate_filename):
         add_popup_for_element_reaction('class="reaction"', intermediate_filename)
 
 
-def insert_metab_id(file_source_path, output_filename, intermediate_filename):
+def insert_metabolite_ids(file_source_path, output_filename, intermediate_filename):
     ElementTree.register_namespace('svg', "http://www.w3.org/2000/svg")
 
     path_original_file = file_source_path

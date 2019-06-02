@@ -9,7 +9,7 @@ from cobra.core.solution import Solution as CobraSolution
 from cobra.flux_analysis import flux_variability_analysis
 
 from .errors import CobraModelFileError, SVGMapFileError
-from .utils import parse2, draw_network, insert_interactive_script, insert_metab_id
+from .utils import parse2, draw_network, insert_interactive_script, insert_metabolite_ids
 
 
 def _create_visualisation(model_filename, svg_filename, output_filename, analysis_type='FBA',
@@ -58,10 +58,10 @@ def produce_output_file(model, file_source_path, analysis_results, analysis_type
     svg_object.save(intermediate_filename)
     print('Network has been drawn')
     insert_interactive_script(intermediate_filename)
-    insert_metab_id(file_source_path, output_filename, intermediate_filename)
+    insert_metabolite_ids(file_source_path, output_filename, intermediate_filename)
     if intermediate_filename == 'pysvg_developed_file.svg':
         os.remove(intermediate_filename)
-    print('metab id has been drawn added')
+    print('Metabolite ids have been added')
 
 
 def calculate_common_substrate_flux(model):
@@ -82,17 +82,17 @@ def calculate_common_substrate_flux(model):
 
     # Generate dataframe where only consuming reactions are taken into account
 
-    reac_consist_carbon = []
+    reaction_consist_carbon = []
     for reaction in fva_results_substrates.index:
-        reac_cobrapy = model.reactions.get_by_id(reaction)
-        for metabolite in reac_cobrapy.reactants:
+        reaction_cobrapy = model.reactions.get_by_id(reaction)
+        for metabolite in reaction_cobrapy.reactants:
             if 'C' in metabolite.elements.keys():
-                reac_consist_carbon.append(str(reaction))
+                reaction_consist_carbon.append(str(reaction))
 
     # Filter from FVA substrate list reactions which HAVE NOT included
 
     flux_sum = 0
-    for reaction in reac_consist_carbon:
+    for reaction in reaction_consist_carbon:
         flux_sum = flux_sum + fva_results.loc[reaction, 'minimum']
     return flux_sum
 
