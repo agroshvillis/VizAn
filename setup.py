@@ -9,6 +9,8 @@ if CURRENT_PYTHON == (2, 7):
     pysvg = 'pysvg>=0.2.2'
 elif CURRENT_PYTHON >= (3, 4):
     pysvg = 'pysvg-py3>=0.2.2.post2'
+else:
+    pysvg = 'pysvg'
 
 required = [
     pysvg,

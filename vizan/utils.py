@@ -55,10 +55,9 @@ def build2(node_, obj):
     for child_ in node_.childNodes:
         node_name_ = child_.nodeName.split(':')[-1]
         if child_.nodeType == Node.ELEMENT_NODE:
-            object_instance = None
             try:
                 object_instance = eval(node_name_.title())()
-            except:
+            except BaseException:
                 continue
             if object_instance is not None:
                 obj.addElement(build2(child_, object_instance))
@@ -174,39 +173,41 @@ def set_color_in_svg_fba(svgobj, reaction, analysis_results, color_type, flux_su
 def set_stroke_line_width_fba(analysis_results, reaction, flux_sum):
     solution = abs(analysis_results[reaction])
     flux_sum = abs(flux_sum)
+    width = None
     if solution >= flux_sum * 0.7:
         width = 21
-    if solution >= flux_sum * 0.5 and solution < flux_sum * 0.7:
+    if flux_sum * 0.5 <= solution < flux_sum * 0.7:
         width = 20
-    if solution >= flux_sum * 0.3 and solution < flux_sum * 0.5:
+    if flux_sum * 0.3 <= solution < flux_sum * 0.5:
         width = 18
-    if solution >= flux_sum * 0.2 and solution < flux_sum * 0.3:
+    if flux_sum * 0.2 <= solution < flux_sum * 0.3:
         width = 16
-    if solution >= flux_sum * 0.1 and solution < flux_sum * 0.2:
+    if flux_sum * 0.1 <= solution < flux_sum * 0.2:
         width = 13
-    if solution >= 0 and solution < flux_sum * 0.1:
+    if 0 <= solution < flux_sum * 0.1:
         width = 4
     return str(width)
 
 
 def set_stroke_line_width_fva(analysis_results, reaction):
-    ##    max_diapazon=abs(analysis_results.max().loc['maximum']) + abs(analysis_results.max().loc['minimum']) ## kaut ko gudraaku vajag
+    # max_diapazon=abs(analysis_results.max().loc['maximum']) + abs(analysis_results.max().loc['minimum']) ## kaut ko gudraaku vajag
     max_diapazon = 100
     flux_diapasone = 0
-    if analysis_results.loc[reaction, 'maximum'] > 0 or analysis_results.loc[reaction, 'maximum'] == analysis_results.loc[
-        reaction, 'minimum']:
+    if analysis_results.loc[reaction, 'maximum'] > 0 or analysis_results.loc[reaction, 'maximum'] == \
+            analysis_results.loc[reaction, 'minimum']:
         flux_diapasone = analysis_results.loc[reaction, 'maximum'] - analysis_results.loc[reaction, 'minimum']
     if analysis_results.loc[reaction, 'maximum'] < 0:
         flux_diapasone = abs(analysis_results.loc[reaction, 'maximum'] + analysis_results.loc[reaction, 'minimum'])
-    if flux_diapasone >= max_diapazon * 0.5 and flux_diapasone < max_diapazon or flux_diapasone > max_diapazon:
+    width = None
+    if max_diapazon * 0.5 <= flux_diapasone < max_diapazon or flux_diapasone > max_diapazon:
         width = 24
-    if flux_diapasone >= max_diapazon * 0.25 and flux_diapasone < max_diapazon * 0.5:
+    if max_diapazon * 0.25 <= flux_diapasone < max_diapazon * 0.5:
         width = 20
-    if flux_diapasone >= max_diapazon * 0.13 and flux_diapasone < max_diapazon * 0.25:
+    if max_diapazon * 0.13 <= flux_diapasone < max_diapazon * 0.25:
         width = 16
-    if flux_diapasone >= max_diapazon * 0.05 and flux_diapasone < max_diapazon * 0.13:
+    if max_diapazon * 0.05 <= flux_diapasone < max_diapazon * 0.13:
         width = 12
-    if flux_diapasone >= max_diapazon * 0.0 and flux_diapasone < max_diapazon * 0.05:
+    if max_diapazon * 0.0 <= flux_diapasone < max_diapazon * 0.05:
         width = 8
     return str(width)
 
