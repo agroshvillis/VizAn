@@ -60,7 +60,9 @@ the **markers** directionality arrow (Fig 2):
 
 
 into biochemical network layout user adds Label element near the reaction line element, as  numerical representation
-field to visualize FBA and FVA optimisation data (Fig 3):
+field to visualize FBA and FVA optimisation data (Fig 3).
+This label must in the form "REACTION_LABEL SOME_FLUX_VALUE", for example "PGI 0.00".
+If REACTION_LABEL is not from BiGG database, then the informational tooltip will not work.
 
 .. figure:: img/figure3.png
     :scale: 50%
