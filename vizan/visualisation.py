@@ -14,10 +14,16 @@ from .utils import parse2, draw_network, insert_interactive_script, insert_metab
 
 def _create_visualisation(model_filename, svg_filename, output_filename, analysis_type='FBA',
                           analysis_results=None, intermediate_filename=None):
+    # Check arguments
+    supported_analysis_types = {"FBA", "FVA"}
+    if analysis_type not in supported_analysis_types:
+        message = "Analysis type is wrong. It has to be one of the values: {}"
+        raise ValueError(message.format(supported_analysis_types))
     try:
         model = cio.load_json_model(model_filename)
     except Exception as exc:
         raise CobraModelFileError("Failed to load model from given JSON : {}".format(exc.args))
+    # Set default arguments if none provided
     if analysis_results is None:
         fba_results = model.optimize()
         if analysis_type == 'FBA':
