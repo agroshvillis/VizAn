@@ -28,8 +28,8 @@ def draw_network(model, svg_object, analysis_results, flux_sum):
                 if not isinstance(s1, pysvg.core.TextContent):
                     set_reaction_id_from_sympheny(s1, ' ', d=0)  # to put ID on reaction class group elements
                     set_metabolite_id_from_sympheny(s1, ' ', d=0)  # to put ID on metabolite class group elements
-                    traverse_svg_fba(s1, model, analysis_results, '', flux_sum,
-                                     reaction_ids)  # for calculating colors and etc
+                    traverse_svg(s1, model, analysis_results, '', flux_sum,
+                                 reaction_ids)  # for calculating colors and etc
 
 
 def calculate_method_name(attr):
@@ -100,7 +100,7 @@ class Style2(dict):
         return str(rv)
 
 
-def traverse_svg_fba(svg_obj, model, analysis_results, reaction, flux_sum, reaction_id, d=0):
+def traverse_svg(svg_obj, model, analysis_results, reaction, flux_sum, reaction_id, d=0):
     for s in svg_obj._subElements:
         if not isinstance(s, pysvg.core.TextContent):
             if str(s.getAttribute('class')) == 'reaction' and str(s.getAttribute('id')) in reaction_id:
@@ -115,14 +115,14 @@ def traverse_svg_fba(svg_obj, model, analysis_results, reaction, flux_sum, react
                 ]
                 for name, value in attributes:
                     s.setAttribute(attribute_name=name, attribute_value=value)
-                traverse_svg_fba(s, model, analysis_results, reaction, flux_sum, reaction_id, d + 1)
+                traverse_svg(s, model, analysis_results, reaction, flux_sum, reaction_id, d + 1)
             if str(s.getAttribute('class')) == 'segment-group' or s.getAttribute('class') == 'arrowheads' or str(
                     s.getAttribute('class')) == 'reaction-label-group':
-                traverse_svg_fba(s, model, analysis_results, reaction, flux_sum, reaction_id, d + 1)
+                traverse_svg(s, model, analysis_results, reaction, flux_sum, reaction_id, d + 1)
             if str(s.getAttribute('class')) == 'segment' and reaction in reaction_id:
-                set_color_in_svg_fba(s, reaction, analysis_results, 'stroke', flux_sum)
+                set_color_in_svg(s, reaction, analysis_results, 'stroke', flux_sum)
             if str(s.getAttribute('class')) == 'arrowhead' and reaction in reaction_id:
-                set_color_in_svg_fba(s, reaction, analysis_results, 'fill', flux_sum)
+                set_color_in_svg(s, reaction, analysis_results, 'fill', flux_sum)
             if str(s.getAttribute('class')) == 'reaction-label label' and reaction in reaction_id:
                 for l in s._subElements:
                     if isinstance(l, pysvg.core.TextContent):
@@ -145,12 +145,12 @@ def traverse_svg_fba(svg_obj, model, analysis_results, reaction, flux_sum, react
                     ]
                     for name, value in attributes:
                         s.setAttribute(attribute_name=name, attribute_value=value)
-                    traverse_svg_fba(s, model, analysis_results, reaction, flux_sum, reaction_id, d + 1)
+                    traverse_svg(s, model, analysis_results, reaction, flux_sum, reaction_id, d + 1)
             if str(s.getAttribute('class')) == 'node-circle metabolite-circle':
                 print("")
 
 
-def set_color_in_svg_fba(svg_obj, reaction, analysis_results, color_type, flux_sum):
+def set_color_in_svg(svg_obj, reaction, analysis_results, color_type, flux_sum):
     def reaction_max(this_reaction):
         return analysis_results.loc[this_reaction, 'maximum']
 
