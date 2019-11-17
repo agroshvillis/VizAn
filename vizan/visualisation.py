@@ -9,7 +9,7 @@ from cobra.core.solution import Solution as CobraSolution
 from cobra.flux_analysis import flux_variability_analysis
 
 from .errors import CobraModelFileError, SVGMapFileError
-from .utils import parse2, draw_network, insert_interactive_script, insert_metabolite_ids
+from .utils import determine_format_and_parse_svg, draw_network, insert_interactive_script, insert_metabolite_ids
 
 
 def _create_visualisation(model_filename, svg_filename, output_filename, analysis_type='FBA',
@@ -52,7 +52,7 @@ def _create_visualisation(model_filename, svg_filename, output_filename, analysi
 def produce_output_file(model, file_source_path, analysis_results, analysis_type, output_filename,
                         intermediate_filename='pysvg_developed_file.svg'):
     try:
-        svg_object = parse2(file_source_path)
+        svg_object = determine_format_and_parse_svg(file_source_path)
     except Exception as exc:
         raise SVGMapFileError("Failed to parse SVG pathway map : {}".format(exc.args))
     if type(analysis_results) == CobraSolution:

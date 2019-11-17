@@ -73,9 +73,25 @@ def build2(node_, obj):
     return obj
 
 
-def parse2(input_filename):
-    doc = minidom.parse(input_filename)
-    root_node = doc.documentElement
+def determine_format_and_parse_svg(input_filename):
+    document = minidom.parse(input_filename)
+    svg_element = document.documentElement
+    svg_class = svg_element.getAttribute("class")
+    if svg_class == 'escher-svg':
+        return parse_escher_svg(svg_element)
+    elif svg_class == '':
+        return parse_handmade_svg(svg_element)
+    else:
+        raise ValueError("Unknown format: svg class attribute is {}".format(svg_class))
+
+
+def parse_escher_svg(root_node):
+    root_obj = pysvg.structure.Svg()
+    build2(root_node, root_obj)
+    return root_obj
+
+
+def parse_handmade_svg(root_node):
     root_obj = pysvg.structure.Svg()
     build2(root_node, root_obj)
     return root_obj
