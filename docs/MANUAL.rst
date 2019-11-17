@@ -1,24 +1,27 @@
-VizAn is Python based visualization tool.
-=========================================
+VizAn is a metabolic flux visualisation tool.
+=============================================
 
-VizAn is Python based visualization tool for Flux Balance Analysis (FBA) and
-Flux variability analysis (FVA) tool. VizAn uses SVG file based network drawings
-to visualize optimization results.  In constraint based modelling analysis
-results visualisation is made using 2 different approaches :
+VizAn is a metabolic flux visualisation tool written in Python. It can be
+used for flux balance analysis (FBA) and flux variability analysis (FVA).
+VizAn needs an SVG file, which contains a metabolic network layout to
+visualise optimization results.
 
-1. manual made biochemical network layout.
-2. automatically made biochemical network layout.
+In constraint-based modeling results can be visualised using two
+different approaches:
 
-As one of main negative aspects of automatically made biochemical network layout
-is that once changes are made in network and all network layout is differently
-generated. This complicates network drawing analysis and representation of optimisation results.
-VizAn is visualisation tool which operate with manual developed biochemical
-network layouts made in vector graphic tool Inkscape (atsauce), uses python
-environment to visualize biochemical network optimisation results and generate
-new interactive SVG file, which can be launched using WEB browsers like
-Chrome, Mozilla Firefox, Safari, Microsoft Edge running on Windows, Linux
-and Mac OS operations systems.
-This enables easy optimization results distribution between users on most computer operation systems.
+1. Manually drawn biochemical network layout.
+2. Automatically generated biochemical network layout.
+
+The main drawback of automatically generated layout is that after minor changes
+to the network usually a newly generated layout differs considerably.
+This complicates visual analysis and representation of the results.
+
+VizAn can operate with manually drawn biochemical network layout made in
+vector graphics software `Inkscape <https://inkscape.org/>`__.
+VizAn visualises biochemical network optimisation results by generating a new
+SVG file, which can be used interactively within any capable web browser like
+Chrome, Firefox, Safari, Microsoft Edge on any supported operating system like
+Windows, Linux or macOS. This enables easy distribution of results between users.
 
 **VizAn functionality necessary tools:**
 ----------------------------------------
@@ -60,7 +63,7 @@ the **markers** directionality arrow (Fig 2):
 
 
 into biochemical network layout user adds Label element near the reaction line element, as  numerical representation
-field to visualize FBA and FVA optimisation data (Fig 3).
+field to visualise FBA and FVA optimisation data (Fig 3).
 This label must in the form "REACTION_LABEL SOME_FLUX_VALUE", for example "PGI 0.00".
 If REACTION_LABEL is not from BiGG database, then the informational tooltip will not work.
 
@@ -105,7 +108,7 @@ stage and model itself in ScrumPy or CobraPy do not contain necessary data for
 tooltip window visualisation, then this information needs to bee filled as
 metabolite (text) element class.
 
-For CobraPy FBA solution visualization there is need to insert information
+For CobraPy FBA solution visualisation there is need to insert information
 like (example is found in BIGG database :
 http://bigg.ucsd.edu/models/iJO1366/metabolites/10fthf_c ):
 
@@ -125,7 +128,7 @@ as BIGG database id NADH and NAD as id name NAD).
     :scale: 50%
     :alt: Fig. 5.
 
-    Fig ??? Metabolite id name representation  where VizAn is used for information visualization.
+    Fig ??? Metabolite id name representation  where VizAn is used for information visualisation.
 
 .. figure:: img/figure6.png
     :scale: 50%
@@ -149,7 +152,7 @@ All other information will be displayed in WEB browser by MetaCyc clicking the l
 
 Reactions are representing enzyme conversion of metabolites. This is done using straight
 or Bezier line elements in InkScape. How to draw reactions is described in section ???.
-To get more precise information from visualization tool the tooltip is used.
+To get more precise information from visualisation tool the tooltip is used.
 ScrumPy or CobraPy do not contain necessary data for tooltip window visualisation,
 then this information needs to bee filled as reaction (shape) element class.
 
@@ -158,7 +161,7 @@ Grouping policy in VizAn is described in Fig. 4, where is described necessary el
 reaction element. All reaction shapes, directionality elements and text element which will represent optimization
 results should be grouped in 1 common group element. Only this group element should be granted by additional reaction
 information as class attributes (FIG 4.).
-Mandatory information to visualize  ScrumPy optimisation results are the same (Fig ???):
+Mandatory information to visualise  ScrumPy optimisation results are the same (Fig ???):
 
 a. Reaction full name as shape element class : “Name”
 b. Reaction stoichiometry (which metabolites and in what direction are produced) as shape element class : “Stoichiometry”
@@ -177,7 +180,7 @@ information about reaction (FIG ???)
 
     Fig ???_reaction example of Glucose-6-phosphate phosphatase reaction detailed information in BIGG database.
 
-Mandatory information to visualize  CobraPy optimisation results are the same:
+Mandatory information to visualise  CobraPy optimisation results are the same:
 
 a) Reaction full name as shape element class : “Name”
 b) Reaction stoichiometry (which metabolites and in what direction are produced) as shape element class : “Stoichiometry”
@@ -194,7 +197,7 @@ about reaction (FIG ???)
 **e) adding additional reaction information**
 
 VizAn tooltip is not developed yet to show in user friendly tooltip the additional reaction information, but this not
-mean that this information can not be added into SVG visualization file for future use. CobraPy environment reaction
+mean that this information can not be added into SVG visualisation file for future use. CobraPy environment reaction
 can offer to use additional information like:
 
 a. GPR – gene protein reaction information;
@@ -247,14 +250,14 @@ path_source : this path where is biochemical network layout located on computer.
 string value
 Solution : This is FBA or FVA optimization type results. Running FBA or FVA in CobraPy there is need to define results
 (example Sol).
-SolutionType : VizAn allows to visualize FBA or FVA optimization results.
+SolutionType : VizAn allows to visualise FBA or FVA optimization results.
 Product_name
 Substrate_name
 Additional_string
 
 **h) FBA calculation visualisation**
 
-For CobraPy FBA results visualization  CobraPy should run VizAn_Cobra.py if CobraPy is used in Python shell environment
+For CobraPy FBA results visualisation  CobraPy should run VizAn_Cobra.py if CobraPy is used in Python shell environment
 (as example is shown E. Coli iML1515 model example):
 
 .. code-block:: python
@@ -283,12 +286,12 @@ To generate FBA solution :
 
     sol= model.optimize()
 
-To visualize sol results on biochemical network layout we need to call:
+To visualise sol results on biochemical network layout we need to call:
 
 .. code-block:: python
 
     import Draw_model
-    Draw_model.Call_Draw_CobraPy(model,’/home/user/E_coli/visualization/E_Coli_core_svg’,sol, ‘FBA’, ‘Ethanol’, ‘Glucose’,’add everything what You want’)
+    Draw_model.Call_Draw_CobraPy(model,’/home/user/E_coli/visualisation/E_Coli_core_svg’,sol, ‘FBA’, ‘Ethanol’, ‘Glucose’,’add everything what You want’)
 
 And at the end new SVG file will be generated with interactive tooltip and link to according BIGG database entry.
 
@@ -296,7 +299,7 @@ And at the end new SVG file will be generated with interactive tooltip and link 
 
 To run VizAn in or if using Jupyter Notebooks run VizAn_Cobra_Jupyter.ipynb file.
 
-FBA calculation visualization
+FBA calculation visualisation
 
 **CobraPy  functionality:**
 ----------------------------------------

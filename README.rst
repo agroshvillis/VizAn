@@ -1,6 +1,7 @@
 VizAn
 =====
-
+VizAn is a metabolic flux visualisation tool written in Python. It can be used
+for flux balance analysis (FBA) and flux variability analysis (FVA).
 
 .. contents:: **Table of Contents**
     :backlinks: none
@@ -31,15 +32,15 @@ Explanation of parameters:
 __________________________
 
 visualise(model_filename, svg_filename, output_filename, analysis_type='FBA', analysis_results=None)
-    :model_filename: a filename string, which gives JSON metabolic model of an organism
-    :svg_filename: a filename string, which gives SVG map of pathways, that is made based on MANUAL.rst
-    :output_filename: a filename string, which specifies where to save the resulting SVG map
-    :analysis_type: "FBA" or "FVA" string, to specify type of visualisation
+    :model_filename: a filename string of metabolic model of an organism saved as JSON
+    :svg_filename: a filename string of SVG pathway map, which is made according to instructions in MANUAL.rst
+    :output_filename: a filename string for output SVG file with the visualisation
+    :analysis_type: "FBA" or "FVA" string, to specify the type of visualisation
     :analysis_results: optional FBA or FVA results to be given (otherwise they are calculated using defaults)
     :return: None
 
-Manual for creation of SVG pathway maps
----------------------------------------
+Manual for creating SVG biochemical pathway maps
+------------------------------------------------
 
 See the manual `here <docs/MANUAL.rst>`__
 
